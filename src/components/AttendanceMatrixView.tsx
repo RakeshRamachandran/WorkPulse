@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { Employee, Site, AttendanceRecord } from '../types';
+import { getRecordSiteIds } from '../types';
 import { Search, Filter, Calendar, Info } from 'lucide-react';
 
 interface AttendanceMatrixViewProps {
@@ -187,7 +188,11 @@ export const AttendanceMatrixView: React.FC<AttendanceMatrixViewProps> = ({
                       recordLookup.get(`${emp.emp_id}_${day}`);
 
                     const status = rec?.status;
-                    const site = rec?.site_id ? siteMap.get(rec.site_id) : null;
+                    const siteIds = getRecordSiteIds(rec);
+                    const assignedSites = siteIds.map((id) => siteMap.get(id)).filter(Boolean) as Site[];
+                    const siteNamesStr = assignedSites.length > 0
+                      ? assignedSites.map((s) => `${s.name} (${s.code || ''})`).join(', ')
+                      : 'N/A';
                     const ot = rec?.ot_hours || 0;
 
                     let bgClass = 'bg-[#F8FAFC] text-[#6B7280] border border-[#E5E7EB]';
@@ -208,7 +213,7 @@ export const AttendanceMatrixView: React.FC<AttendanceMatrixViewProps> = ({
                     }
 
                     const tooltipText = rec
-                      ? `Day ${day}: ${status}\nSite: ${site ? `${site.name} (${site.code})` : 'N/A'}${
+                      ? `Day ${day}: ${status}\nSite(s): ${siteNamesStr}${
                           ot > 0 ? `\nOT: ${ot} hrs` : ''
                         }`
                       : `Day ${day}: Not Logged`;
@@ -218,6 +223,11 @@ export const AttendanceMatrixView: React.FC<AttendanceMatrixViewProps> = ({
                         <div className={`w-7 h-7 mx-auto rounded-full flex items-center justify-center text-[11px] ${bgClass}`}>
                           {letter}
                         </div>
+                        {assignedSites.length > 1 && (
+                          <div className="text-[9px] font-bold text-[#16A34A] leading-none mt-0.5" title={siteNamesStr}>
+                            {assignedSites.length} sites
+                          </div>
+                        )}
                         {ot > 0 && (
                           <div className="text-[10px] font-bold text-[#F59E0B] mt-0.5">+ {ot}h</div>
                         )}

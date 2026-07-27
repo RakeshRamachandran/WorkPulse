@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { Employee, Site, AttendanceRecord, AttendanceStatus } from '../types';
+import { getRecordSiteIds } from '../types';
+import { MultiSiteSelect } from './MultiSiteSelect';
 import {
   Search,
   CheckCircle,
@@ -14,7 +16,9 @@ import {
   ChevronDown,
   Sparkles,
   AlertTriangle,
-  X
+  X,
+  Users,
+  HardHat,
 } from 'lucide-react';
 
 interface DailyAttendanceViewProps {
@@ -27,6 +31,8 @@ interface DailyAttendanceViewProps {
   onBulkSave: (records: Partial<AttendanceRecord>[]) => Promise<void>;
   onUnsavedStatusChange?: (hasUnsaved: boolean) => void;
 }
+
+type ActiveSection = 'employees' | 'contractors';
 
 export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
   selectedYear,
@@ -42,10 +48,11 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
   const defaultDay = isCurrentMonth ? today.getDate() : 1;
 
   const [selectedDay, setSelectedDay] = useState<number>(defaultDay);
+  const [activeSection, setActiveSection] = useState<ActiveSection>('employees');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('ALL');
   const [filterSiteId, setFilterSiteId] = useState<string>('ALL');
-  const [bulkSiteId, setBulkSiteId] = useState<string>('');
+
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
   const [showSavedNotification, setShowSavedNotification] = useState<boolean>(false);
@@ -66,16 +73,23 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
         (r) => r.employee_id === emp.id && r.date === dateStr
       );
       if (existing) {
-        map[emp.id] = existing;
+        const siteIds = getRecordSiteIds(existing);
+        map[emp.id] = {
+          ...existing,
+          site_ids: siteIds,
+          site_id: siteIds[0] || null,
+        };
       } else {
         map[emp.id] = {
           employee_id: emp.id,
           date: dateStr,
           status: '' as any,
           site_id: null,
+          site_ids: [],
           ot_hours: 0,
           late_hours: 0,
           late_minutes: 0,
+          labour_count: 0,
           remarks: undefined,
         };
       }
@@ -111,23 +125,25 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
 
   const handleStatusChange = (empId: string, status: string) => {
     const current = draftRecords[empId] || {};
+    const curSiteIds = getRecordSiteIds(current);
+    const isAbsentOrHoliday = status === 'ABSENT' || status === 'HOLIDAY';
     updateLocalRecord(empId, {
       status: status as AttendanceStatus,
-      site_id: status === 'ABSENT' || status === 'HOLIDAY' ? null : current.site_id,
+      site_id: isAbsentOrHoliday ? null : (curSiteIds[0] || null),
+      site_ids: isAbsentOrHoliday ? [] : curSiteIds,
       ot_hours: status === 'ABSENT' ? 0 : (current.ot_hours || 0),
     });
   };
 
-  const handleSiteChange = (empId: string, siteId: string) => {
+  const handleSitesChange = (empId: string, siteIds: string[]) => {
     updateLocalRecord(empId, {
-      site_id: siteId || null,
+      site_ids: siteIds,
+      site_id: siteIds[0] || null,
     });
   };
 
   const handleOTChange = (empId: string, otHours: number) => {
-    updateLocalRecord(empId, {
-      ot_hours: otHours,
-    });
+    updateLocalRecord(empId, { ot_hours: otHours });
   };
 
   const handleLateTimeChange = (empId: string, lateMins: number) => {
@@ -138,17 +154,23 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
     });
   };
 
+  const handleLabourCountChange = (empId: string, count: number) => {
+    updateLocalRecord(empId, { labour_count: count });
+  };
+
   const handleBulkMarkPresent = () => {
     setDraftRecords((prev) => {
       const next = { ...prev };
-      filteredEmployees.forEach((emp) => {
+      visibleEmployees.forEach((emp) => {
         const cur = next[emp.id] || {};
+        const curSiteIds = getRecordSiteIds(cur);
         next[emp.id] = {
           ...cur,
           employee_id: emp.id,
           date: dateStr,
           status: 'PRESENT',
-          site_id: bulkSiteId || cur.site_id || null,
+          site_ids: curSiteIds,
+          site_id: curSiteIds[0] || null,
         };
       });
       return next;
@@ -204,24 +226,42 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
     }
   };
 
-  const filteredEmployees = employees.filter((emp) => {
+  // Split employees into regular staff vs contractors
+  const regularEmployees = employees.filter((emp) => emp.designation !== 'Subcontractor');
+  const contractors = employees.filter((emp) => emp.designation === 'Subcontractor');
+
+  // Current pool based on active tab
+  const currentPool = activeSection === 'employees' ? regularEmployees : contractors;
+
+  // Visible (filtered) employees in current tab
+  const visibleEmployees = currentPool.filter((emp) => {
     const matchesSearch =
       emp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       emp.emp_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
       emp.designation.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesCategory = filterCategory === 'ALL' || emp.category === filterCategory;
-    const draftSiteId = draftRecords[emp.id]?.site_id;
-    const matchesSite = filterSiteId === 'ALL' || draftSiteId === filterSiteId;
+    const draftSiteIds = getRecordSiteIds(draftRecords[emp.id]);
+    const matchesSite = filterSiteId === 'ALL' || draftSiteIds.includes(filterSiteId);
 
     return matchesSearch && matchesCategory && matchesSite;
   });
 
+  // Stats are always computed across ALL employees (both tabs)
   const draftList = Object.values(draftRecords);
   const presentCount = draftList.filter((r) => r.status === 'PRESENT' || r.status === 'HALF_DAY').length;
   const absentCount = draftList.filter((r) => r.status === 'ABSENT').length;
   const otTotalHours = draftList.reduce((acc, r) => acc + (Number(r.ot_hours) || 0), 0);
   const lateCount = draftList.filter((r) => (r.late_minutes || 0) > 0).length;
+
+  // Status pill helper
+  const statusStyle = (status: string) => {
+    if (status === 'PRESENT') return 'bg-[#16A34A] text-white border-[#16A34A] font-semibold shadow-xs';
+    if (status === 'HALF_DAY') return 'bg-[#F59E0B] text-white border-[#F59E0B] font-semibold shadow-xs';
+    if (status === 'ABSENT') return 'bg-[#EF4444] text-white border-[#EF4444] font-semibold shadow-xs';
+    if (status === 'HOLIDAY') return 'bg-purple-600 text-white border-purple-600 font-semibold shadow-xs';
+    return 'bg-[#F8FAFC] text-[#6B7280] border-[#E5E7EB] font-normal hover:bg-slate-100';
+  };
 
   return (
     <div className="space-y-[24px] pb-36">
@@ -261,32 +301,14 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
             </div>
           </div>
 
-          {/* Bulk Set Site Action */}
-          <div className="flex items-center space-x-3 bg-[#F8FAFC] p-1.5 rounded-[10px] border border-[#E5E7EB]">
-            <div className="relative">
-              <select
-                value={bulkSiteId}
-                onChange={(e) => setBulkSiteId(e.target.value)}
-                className="h-[40px] bg-white text-[14px] font-medium text-[#111827] pl-3 pr-8 rounded-[10px] border border-[#E5E7EB] focus:outline-none appearance-none cursor-pointer"
-              >
-                <option value="">-- Bulk Select Site --</option>
-                {sites.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name} ({s.code})
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="w-4 h-4 text-[#6B7280] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
-
-            <button
-              onClick={handleBulkMarkPresent}
-              className="h-[40px] bg-[#16A34A] hover:bg-[#15803D] text-white font-medium text-[14px] px-4 rounded-[10px] shadow-xs transition-all duration-200 flex items-center space-x-2 cursor-pointer active:scale-95 shrink-0"
-            >
-              <CheckCircle className="w-4 h-4 shrink-0" />
-              <span>Set All Present</span>
-            </button>
-          </div>
+          {/* Mark All Present */}
+          <button
+            onClick={handleBulkMarkPresent}
+            className="h-[40px] bg-[#16A34A] hover:bg-[#15803D] text-white font-medium text-[14px] px-4 rounded-[10px] shadow-xs transition-all duration-200 flex items-center space-x-2 cursor-pointer active:scale-95 shrink-0"
+          >
+            <CheckCircle className="w-4 h-4 shrink-0" />
+            <span>Set All Present</span>
+          </button>
         </div>
 
         {/* 4 Summary Stat Badges */}
@@ -333,214 +355,263 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
         </div>
       </div>
 
-      {/* Filter & Search Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-[20px] rounded-[14px] border border-[#E5E7EB] shadow-[0_2px_8px_rgba(0,0,0,0.05)]">
-        {/* Search Input */}
-        <div className="relative flex items-center flex-1 min-w-[280px]">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#6B7280] shrink-0 pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Search employee by name, ID, or designation..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-[40px] bg-[#F8FAFC] border border-[#E5E7EB] rounded-[10px] pl-10 pr-4 text-[14px] text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#16A34A] focus:bg-white transition-all"
-          />
+      {/* Section Tabs: Employees / Contractors */}
+      <div className="bg-white border border-[#E5E7EB] rounded-[14px] shadow-[0_2px_8px_rgba(0,0,0,0.05)] overflow-hidden">
+        <div className="flex border-b border-[#E5E7EB]">
+          <button
+            onClick={() => { setActiveSection('employees'); setSearchQuery(''); setFilterCategory('ALL'); setFilterSiteId('ALL'); }}
+            className={`flex-1 flex items-center justify-center space-x-2.5 py-3.5 text-[14px] font-semibold transition-all duration-150 border-b-2 ${
+              activeSection === 'employees'
+                ? 'border-[#16A34A] text-[#16A34A] bg-[#F0FDF4]'
+                : 'border-transparent text-[#6B7280] hover:text-[#111827] hover:bg-[#F8FAFC]'
+            }`}
+          >
+            <Users className="w-4 h-4 shrink-0" />
+            <span>Employees</span>
+            <span className={`text-[12px] px-2 py-0.5 rounded-full font-bold ${activeSection === 'employees' ? 'bg-[#16A34A] text-white' : 'bg-[#E5E7EB] text-[#6B7280]'}`}>
+              {regularEmployees.length}
+            </span>
+          </button>
+
+          <div className="w-px bg-[#E5E7EB]" />
+
+          <button
+            onClick={() => { setActiveSection('contractors'); setSearchQuery(''); setFilterCategory('ALL'); setFilterSiteId('ALL'); }}
+            className={`flex-1 flex items-center justify-center space-x-2.5 py-3.5 text-[14px] font-semibold transition-all duration-150 border-b-2 ${
+              activeSection === 'contractors'
+                ? 'border-orange-500 text-orange-600 bg-orange-50'
+                : 'border-transparent text-[#6B7280] hover:text-[#111827] hover:bg-[#F8FAFC]'
+            }`}
+          >
+            <HardHat className="w-4 h-4 shrink-0" />
+            <span>Contractors</span>
+            <span className={`text-[12px] px-2 py-0.5 rounded-full font-bold ${activeSection === 'contractors' ? 'bg-orange-500 text-white' : 'bg-[#E5E7EB] text-[#6B7280]'}`}>
+              {contractors.length}
+            </span>
+          </button>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Site Filter */}
-          <div className="flex items-center space-x-2">
-            <Building className="w-4 h-4 text-[#6B7280] shrink-0" />
-            <div className="relative">
-              <select
-                value={filterSiteId}
-                onChange={(e) => setFilterSiteId(e.target.value)}
-                className="h-[40px] bg-[#F8FAFC] text-[14px] font-medium text-[#111827] pl-3 pr-8 rounded-[10px] border border-[#E5E7EB] focus:outline-none appearance-none cursor-pointer"
-              >
-                <option value="ALL">All Project Sites</option>
-                {sites.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name} ({s.code})
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="w-4 h-4 text-[#6B7280] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
+        {/* Filter & Search Toolbar */}
+        <div className="flex flex-wrap items-center justify-between gap-4 p-[16px] bg-[#FAFAFA] border-b border-[#E5E7EB]">
+          {/* Search Input */}
+          <div className="relative flex items-center flex-1 min-w-[240px]">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#6B7280] shrink-0 pointer-events-none" />
+            <input
+              type="text"
+              placeholder={activeSection === 'employees' ? 'Search employee by name, ID...' : 'Search contractor by name, ID...'}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-[38px] bg-white border border-[#E5E7EB] rounded-[10px] pl-10 pr-4 text-[14px] text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#16A34A] focus:bg-white transition-all"
+            />
           </div>
 
-          {/* Category Filter */}
-          <div className="flex items-center space-x-2">
-            <Filter className="w-4 h-4 text-[#6B7280] shrink-0" />
-            <div className="relative">
-              <select
-                value={filterCategory}
-                onChange={(e) => setFilterCategory(e.target.value)}
-                className="h-[40px] bg-[#F8FAFC] text-[14px] font-medium text-[#111827] pl-3 pr-8 rounded-[10px] border border-[#E5E7EB] focus:outline-none appearance-none cursor-pointer"
-              >
-                <option value="ALL">All Categories</option>
-                <option value="Engineer">Engineers Only</option>
-                <option value="Worker">Workers Only</option>
-              </select>
-              <ChevronDown className="w-4 h-4 text-[#6B7280] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Site Filter */}
+            <div className="flex items-center space-x-2">
+              <Building className="w-4 h-4 text-[#6B7280] shrink-0" />
+              <div className="relative">
+                <select
+                  value={filterSiteId}
+                  onChange={(e) => setFilterSiteId(e.target.value)}
+                  className="h-[38px] bg-white text-[14px] font-medium text-[#111827] pl-3 pr-8 rounded-[10px] border border-[#E5E7EB] focus:outline-none appearance-none cursor-pointer"
+                >
+                  <option value="ALL">All Project Sites</option>
+                  {sites.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.code})
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-4 h-4 text-[#6B7280] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
             </div>
+
+            {/* Category Filter — only shown on Employees tab */}
+            {activeSection === 'employees' && (
+              <div className="flex items-center space-x-2">
+                <Filter className="w-4 h-4 text-[#6B7280] shrink-0" />
+                <div className="relative">
+                  <select
+                    value={filterCategory}
+                    onChange={(e) => setFilterCategory(e.target.value)}
+                    className="h-[38px] bg-white text-[14px] font-medium text-[#111827] pl-3 pr-8 rounded-[10px] border border-[#E5E7EB] focus:outline-none appearance-none cursor-pointer"
+                  >
+                    <option value="ALL">All Categories</option>
+                    <option value="Engineer">Engineers Only</option>
+                    <option value="Worker">Workers Only</option>
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-[#6B7280] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              </div>
+            )}
           </div>
         </div>
-      </div>
 
-      {/* Main Table Container */}
-      <div className="bg-white border border-[#E5E7EB] rounded-[12px] overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.05)]">
+        {/* Main Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-[#FAFAFA] text-[13px] uppercase tracking-wider text-[#6B7280] font-semibold border-b border-[#E5E7EB] h-[48px]">
                 <th className="py-3 px-5 w-28">Emp ID</th>
-                <th className="py-3 px-5 min-w-[200px]">Employee Name</th>
-                <th className="py-3 px-5 min-w-[150px]">Designation</th>
+                <th className="py-3 px-5 min-w-[200px]">{activeSection === 'employees' ? 'Employee Name' : 'Contractor Name'}</th>
+                <th className="py-3 px-5 min-w-[140px]">Designation</th>
                 <th className="py-3 px-5 text-center w-52">Attendance Status</th>
-                <th className="py-3 px-5 min-w-[240px]">Assigned Site Location</th>
+                <th className="py-3 px-5 min-w-[280px]">Assigned Site Location(s)</th>
+                {activeSection === 'contractors' && (
+                  <th className="py-3 px-5 text-center w-28">Labours</th>
+                )}
                 <th className="py-3 px-5 text-center w-28">OT Hours</th>
-                <th className="py-3 px-5 text-center w-36">Late Arrival</th>
+                {activeSection === 'employees' && (
+                  <th className="py-3 px-5 text-center w-36">Late Arrival</th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E5E7EB] text-[14px] text-[#111827]">
-              {filteredEmployees.map((emp) => {
-                const rec = draftRecords[emp.id] || {};
-                const currentStatus: string = rec.status || '';
-                const currentSiteId = rec.site_id || '';
-                const currentOT = rec.ot_hours || 0;
-                const currentLateMins = rec.late_minutes || 0;
+              {visibleEmployees.length === 0 ? (
+                <tr>
+                  <td colSpan={activeSection === 'contractors' ? 6 : 7} className="py-12 text-center text-[14px] text-[#6B7280] italic">
+                    No {activeSection === 'employees' ? 'employees' : 'contractors'} match your filters.
+                  </td>
+                </tr>
+              ) : (
+                visibleEmployees.map((emp) => {
+                  const rec = draftRecords[emp.id] || {};
+                  const currentStatus: string = rec.status || '';
+                  const currentSiteIds = getRecordSiteIds(rec);
+                  const currentOT = rec.ot_hours || 0;
+                  const currentLateMins = rec.late_minutes || 0;
+                  const currentLabourCount = rec.labour_count || 0;
+                  const isAbsentOrHoliday = currentStatus === 'ABSENT' || currentStatus === 'HOLIDAY';
 
-                let statusStyle = 'bg-[#F8FAFC] text-[#6B7280] border-[#E5E7EB] font-normal hover:bg-slate-100';
-                if (currentStatus === 'PRESENT') {
-                  statusStyle = 'bg-[#16A34A] text-white border-[#16A34A] font-semibold shadow-xs';
-                } else if (currentStatus === 'HALF_DAY') {
-                  statusStyle = 'bg-[#F59E0B] text-white border-[#F59E0B] font-semibold shadow-xs';
-                } else if (currentStatus === 'ABSENT') {
-                  statusStyle = 'bg-[#EF4444] text-white border-[#EF4444] font-semibold shadow-xs';
-                } else if (currentStatus === 'HOLIDAY') {
-                  statusStyle = 'bg-purple-600 text-white border-purple-600 font-semibold shadow-xs';
-                }
+                  return (
+                    <tr key={emp.id} className="hover:bg-[#F9FBFA] transition-colors duration-150">
+                      {/* Emp ID Pill Badge */}
+                      <td className="py-3 px-5">
+                        <span className={`px-3 py-1 rounded-full text-[12px] font-medium inline-block ${
+                          activeSection === 'contractors'
+                            ? 'bg-orange-50 text-orange-600'
+                            : 'bg-[#E8F7EE] text-[#16A34A]'
+                        }`}>
+                          {emp.emp_id}
+                        </span>
+                      </td>
 
-                return (
-                  <tr key={emp.id} className="h-[52px] hover:bg-[#F9FBFA] transition-colors duration-150">
-                    {/* Emp ID Pill Badge */}
-                    <td className="py-2.5 px-5">
-                      <span className="bg-[#E8F7EE] text-[#16A34A] px-3 py-1 rounded-full text-[12px] font-medium inline-block">
-                        {emp.emp_id}
-                      </span>
-                    </td>
+                      {/* Name */}
+                      <td className="py-3 px-5 font-semibold text-[#111827]">
+                        {emp.name}
+                      </td>
 
-                    {/* Employee Name */}
-                    <td className="py-2.5 px-5 font-semibold text-[#111827]">
-                      {emp.name}
-                    </td>
+                      {/* Designation */}
+                      <td className="py-3 px-5 text-[14px] text-[#6B7280]">
+                        {emp.designation}
+                      </td>
 
-                    {/* Designation */}
-                    <td className="py-2.5 px-5 text-[14px] text-[#6B7280]">
-                      {emp.designation}
-                    </td>
-
-                    {/* Status Select */}
-                    <td className="py-2.5 px-5 text-center">
-                      <div className="relative">
-                        <select
-                          value={currentStatus}
-                          onChange={(e) => handleStatusChange(emp.id, e.target.value)}
-                          className={`w-full h-[40px] text-[14px] px-3.5 rounded-[10px] border appearance-none cursor-pointer transition-all ${statusStyle}`}
-                        >
-                          <option value="" className="bg-white text-[#6B7280] font-normal">
-                            -- Select Status --
-                          </option>
-                          <option value="PRESENT" className="bg-white text-[#16A34A] font-semibold">
-                            Present (Full Day)
-                          </option>
-                          <option value="HALF_DAY" className="bg-white text-[#F59E0B] font-semibold">
-                            Half Day (0.5 Day)
-                          </option>
-                          <option value="ABSENT" className="bg-white text-[#EF4444] font-semibold">
-                            Leave / Absent
-                          </option>
-                          <option value="HOLIDAY" className="bg-white text-purple-600 font-semibold">
-                            Official Holiday
-                          </option>
-                        </select>
-                        <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-80" />
-                      </div>
-                    </td>
-
-                    {/* Site Dropdown */}
-                    <td className="py-2.5 px-5">
-                      {currentStatus === 'ABSENT' || currentStatus === 'HOLIDAY' ? (
-                        <span className="text-[14px] text-[#6B7280] italic">N/A ({currentStatus || 'Absent'})</span>
-                      ) : (
-                        <div className="relative flex items-center space-x-2">
-                          <Building className="w-4 h-4 text-[#6B7280] shrink-0" />
-                          <div className="relative flex-1">
-                            <select
-                              value={currentSiteId}
-                              onChange={(e) => handleSiteChange(emp.id, e.target.value)}
-                              className="w-full h-[40px] bg-[#F8FAFC] text-[14px] font-medium text-[#111827] pl-3 pr-8 rounded-[10px] border border-[#E5E7EB] focus:outline-none focus:ring-2 focus:ring-[#16A34A] focus:bg-white appearance-none cursor-pointer transition"
-                            >
-                              <option value="">-- Select Site Location --</option>
-                              {sites.map((s) => (
-                                <option key={s.id} value={s.id}>
-                                  {s.name} ({s.code})
-                                </option>
-                              ))}
-                            </select>
-                            <ChevronDown className="w-4 h-4 text-[#6B7280] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                          </div>
-                        </div>
-                      )}
-                    </td>
-
-                    {/* OT Input */}
-                    <td className="py-2.5 px-5 text-center">
-                      {currentStatus === 'ABSENT' ? (
-                        <span className="text-[14px] text-[#6B7280]">-</span>
-                      ) : (
-                        <input
-                          type="number"
-                          min="0"
-                          max="16"
-                          step="0.5"
-                          value={currentOT}
-                          onChange={(e) => handleOTChange(emp.id, parseFloat(e.target.value) || 0)}
-                          className="w-20 h-[40px] bg-[#F8FAFC] border border-[#E5E7EB] text-center font-semibold text-[14px] text-[#111827] rounded-[10px] focus:outline-none focus:ring-2 focus:ring-[#16A34A] focus:bg-white transition"
-                        />
-                      )}
-                    </td>
-
-                    {/* Late Minutes Dropdown */}
-                    <td className="py-2.5 px-5 text-center">
-                      {currentStatus === 'ABSENT' || currentStatus === 'HOLIDAY' ? (
-                        <span className="text-[14px] text-[#6B7280]">-</span>
-                      ) : (
+                      {/* Status Select */}
+                      <td className="py-3 px-5 text-center">
                         <div className="relative">
                           <select
-                            value={currentLateMins}
-                            onChange={(e) => handleLateTimeChange(emp.id, parseInt(e.target.value, 10))}
-                            className={`w-full h-[40px] text-[14px] font-semibold pl-3 pr-7 rounded-[10px] border appearance-none cursor-pointer focus:outline-none ${
-                              currentLateMins > 0
-                                ? 'bg-rose-50 text-[#EF4444] border-rose-200'
-                                : 'bg-[#F8FAFC] text-[#111827] border-[#E5E7EB]'
-                            }`}
+                            value={currentStatus}
+                            onChange={(e) => handleStatusChange(emp.id, e.target.value)}
+                            className={`w-full h-[40px] text-[14px] px-3.5 rounded-[10px] border appearance-none cursor-pointer transition-all ${statusStyle(currentStatus)}`}
                           >
-                            <option value="0">On Time</option>
-                            <option value="15">15 mins</option>
-                            <option value="30">30 mins</option>
-                            <option value="45">45 mins</option>
-                            <option value="60">1 hour</option>
-                            <option value="90">1.5 hours</option>
-                            <option value="120">2 hours</option>
+                            <option value="" className="bg-white text-[#6B7280] font-normal">-- Select Status --</option>
+                            <option value="PRESENT" className="bg-white text-[#16A34A] font-semibold">Present (Full Day)</option>
+                            <option value="HALF_DAY" className="bg-white text-[#F59E0B] font-semibold">Half Day (0.5 Day)</option>
+                            <option value="ABSENT" className="bg-white text-[#EF4444] font-semibold">Leave / Absent</option>
+                            <option value="HOLIDAY" className="bg-white text-purple-600 font-semibold">Official Holiday</option>
                           </select>
-                          <ChevronDown className="w-4 h-4 text-[#6B7280] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-80" />
                         </div>
+                      </td>
+
+                      {/* Site Multi-Select */}
+                      <td className="py-3 px-5 min-w-[280px]">
+                        {isAbsentOrHoliday ? (
+                          <span className="text-[14px] text-[#6B7280] italic">N/A ({currentStatus || 'Absent'})</span>
+                        ) : (
+                          <MultiSiteSelect
+                            sites={sites}
+                            selectedSiteIds={currentSiteIds}
+                            onChange={(ids) => handleSitesChange(emp.id, ids)}
+                            placeholder="Select Site Location(s)"
+                          />
+                        )}
+                      </td>
+
+                      {/* Labours — Contractors only */}
+                      {activeSection === 'contractors' && (
+                        <td className="py-3 px-5 text-center">
+                          {isAbsentOrHoliday ? (
+                            <span className="text-[14px] text-[#6B7280]">-</span>
+                          ) : (
+                            <input
+                              type="number"
+                              min="0"
+                              max="500"
+                              step="1"
+                              value={currentLabourCount}
+                              onChange={(e) => handleLabourCountChange(emp.id, parseInt(e.target.value) || 0)}
+                              title="Number of labours brought by this contractor today"
+                              className={`w-20 h-[40px] border text-center font-semibold text-[14px] rounded-[10px] focus:outline-none focus:ring-2 focus:bg-white transition ${
+                                currentLabourCount > 0
+                                  ? 'bg-orange-50 border-orange-300 text-orange-700 focus:ring-orange-400'
+                                  : 'bg-[#F8FAFC] border-[#E5E7EB] text-[#111827] focus:ring-[#16A34A]'
+                              }`}
+                            />
+                          )}
+                        </td>
                       )}
-                    </td>
-                  </tr>
-                );
-              })}
+
+                      {/* OT Input */}
+                      <td className="py-3 px-5 text-center">
+                        {currentStatus === 'ABSENT' ? (
+                          <span className="text-[14px] text-[#6B7280]">-</span>
+                        ) : (
+                          <input
+                            type="number"
+                            min="0"
+                            max="16"
+                            step="0.5"
+                            value={currentOT}
+                            onChange={(e) => handleOTChange(emp.id, parseFloat(e.target.value) || 0)}
+                            className="w-20 h-[40px] bg-[#F8FAFC] border border-[#E5E7EB] text-center font-semibold text-[14px] text-[#111827] rounded-[10px] focus:outline-none focus:ring-2 focus:ring-[#16A34A] focus:bg-white transition"
+                          />
+                        )}
+                      </td>
+
+                      {/* Late Minutes — Employees only */}
+                      {activeSection === 'employees' && (
+                        <td className="py-3 px-5 text-center">
+                          {isAbsentOrHoliday ? (
+                            <span className="text-[14px] text-[#6B7280]">-</span>
+                          ) : (
+                            <div className="relative">
+                              <select
+                                value={currentLateMins}
+                                onChange={(e) => handleLateTimeChange(emp.id, parseInt(e.target.value, 10))}
+                                className={`w-full h-[40px] text-[14px] font-semibold pl-3 pr-7 rounded-[10px] border appearance-none cursor-pointer focus:outline-none ${
+                                  currentLateMins > 0
+                                    ? 'bg-rose-50 text-[#EF4444] border-rose-200'
+                                    : 'bg-[#F8FAFC] text-[#111827] border-[#E5E7EB]'
+                                }`}
+                              >
+                                <option value="0">On Time</option>
+                                <option value="15">15 mins</option>
+                                <option value="30">30 mins</option>
+                                <option value="45">45 mins</option>
+                                <option value="60">1 hour</option>
+                                <option value="90">1.5 hours</option>
+                                <option value="120">2 hours</option>
+                              </select>
+                              <ChevronDown className="w-4 h-4 text-[#6B7280] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                            </div>
+                          )}
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>

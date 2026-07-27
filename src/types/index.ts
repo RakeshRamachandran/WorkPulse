@@ -24,11 +24,24 @@ export interface AttendanceRecord {
   date: string; // YYYY-MM-DD
   status: AttendanceStatus;
   site_id?: string | null;
+  site_ids?: string[]; // Multiple site selection support
   site_name?: string; // hydrated helper
   ot_hours: number;
   late_hours: number;
   late_minutes: number;
+  labour_count?: number; // For subcontractors: number of labours working that day
   remarks?: string;
+}
+
+export function getRecordSiteIds(record?: Partial<AttendanceRecord> | null): string[] {
+  if (!record) return [];
+  if (record.site_ids && record.site_ids.length > 0) {
+    return record.site_ids;
+  }
+  if (record.site_id) {
+    return [record.site_id];
+  }
+  return [];
 }
 
 export interface MonthlyEmployeeSummary {

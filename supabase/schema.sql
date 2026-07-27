@@ -32,9 +32,11 @@ CREATE TABLE IF NOT EXISTS public.attendance_records (
     date DATE NOT NULL,
     status TEXT NOT NULL DEFAULT 'PRESENT', -- 'PRESENT', 'ABSENT', 'HALF_DAY', 'HOLIDAY'
     site_id UUID REFERENCES public.sites(id) ON DELETE SET NULL,
+    site_ids TEXT[] DEFAULT '{}',
     ot_hours NUMERIC(4, 2) NOT NULL DEFAULT 0.0,
     late_hours INT NOT NULL DEFAULT 0,
     late_minutes INT NOT NULL DEFAULT 0,
+    labour_count INT NOT NULL DEFAULT 0,
     remarks TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),

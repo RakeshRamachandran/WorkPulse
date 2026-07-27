@@ -279,6 +279,8 @@ export class DataService {
     const lastDay = new Date(year, month, 0).getDate();
     const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
+    // 1. Try Supabase
+    let supabaseRecords: AttendanceRecord[] = [];
     const client = getSupabaseClient();
     if (client) {
       const { data, error } = await client
@@ -287,39 +289,73 @@ export class DataService {
         .gte('date', startDate)
         .lte('date', endDate);
       if (!error && data && data.length > 0) {
-        return data as AttendanceRecord[];
+        supabaseRecords = data as AttendanceRecord[];
       }
     }
 
+    // 2. Always read localStorage (it is the always-written-to ground truth)
     this.initLocalStorage();
     const stored = localStorage.getItem(LOCAL_ATT_KEY);
-    const records: AttendanceRecord[] = stored ? JSON.parse(stored) : generateInitialAttendance();
-    return records.filter(r => r.date >= startDate && r.date <= endDate);
+    const allLocal: AttendanceRecord[] = stored ? JSON.parse(stored) : generateInitialAttendance();
+    const localRecords = allLocal.filter(r => r.date >= startDate && r.date <= endDate);
+
+    // 3. Merge: start with Supabase, then overlay localStorage records (they are always fresher
+    //    because every save writes to localStorage, even when Supabase upsert fails).
+    const merged = new Map<string, AttendanceRecord>();
+    supabaseRecords.forEach(r => merged.set(`${r.employee_id}_${r.date}`, r));
+    localRecords.forEach(r => merged.set(`${r.employee_id}_${r.date}`, r));
+    const resultRecords = Array.from(merged.values());
+
+    // 4. Normalize site_ids and site_id on all returned records
+    return resultRecords.map((r) => {
+      const site_ids = r.site_ids && Array.isArray(r.site_ids) && r.site_ids.length > 0
+        ? r.site_ids
+        : (r.site_id ? [r.site_id] : []);
+      const primary_site_id = site_ids.length > 0 ? site_ids[0] : (r.site_id || null);
+      return {
+        ...r,
+        site_id: primary_site_id,
+        site_ids,
+      };
+    });
   }
 
   static async saveAttendanceRecord(record: Partial<AttendanceRecord>): Promise<AttendanceRecord> {
     const client = getSupabaseClient();
     let savedRecord: AttendanceRecord | null = null;
 
-    if (client && record.employee_id && record.date) {
+    const site_ids = record.site_ids && Array.isArray(record.site_ids)
+      ? record.site_ids
+      : (record.site_id ? [record.site_id] : []);
+    const primary_site_id = site_ids.length > 0 ? site_ids[0] : (record.site_id || null);
+
+    const recordToSave = {
+      ...record,
+      site_id: primary_site_id,
+      site_ids,
+    };
+
+    if (client && recordToSave.employee_id && recordToSave.date) {
       const { data, error } = await client
         .from('attendance_records')
         .upsert([{
-          employee_id: record.employee_id,
-          date: record.date,
-          status: record.status || 'PRESENT',
-          site_id: record.site_id || null,
-          ot_hours: record.ot_hours || 0,
-          late_hours: record.late_hours || 0,
-          late_minutes: record.late_minutes || 0,
-          remarks: record.remarks || null,
+          employee_id: recordToSave.employee_id,
+          date: recordToSave.date,
+          status: recordToSave.status || 'PRESENT',
+          site_id: primary_site_id,
+          site_ids: site_ids,
+          ot_hours: recordToSave.ot_hours || 0,
+          late_hours: recordToSave.late_hours || 0,
+          late_minutes: recordToSave.late_minutes || 0,
+          labour_count: recordToSave.labour_count || 0,
+          remarks: recordToSave.remarks || null,
           updated_at: new Date().toISOString(),
         }], { onConflict: 'employee_id,date' })
         .select()
         .single();
 
       if (!error && data) {
-        savedRecord = data as AttendanceRecord;
+        savedRecord = { ...data, site_ids } as AttendanceRecord;
       }
     }
 
@@ -329,23 +365,25 @@ export class DataService {
     const records: AttendanceRecord[] = stored ? JSON.parse(stored) : generateInitialAttendance();
 
     const existingIdx = records.findIndex(
-      r => r.employee_id === record.employee_id && r.date === record.date
+      r => r.employee_id === recordToSave.employee_id && r.date === recordToSave.date
     );
 
     if (existingIdx >= 0) {
-      records[existingIdx] = { ...records[existingIdx], ...record } as AttendanceRecord;
+      records[existingIdx] = { ...records[existingIdx], ...recordToSave } as AttendanceRecord;
       if (!savedRecord) savedRecord = records[existingIdx];
     } else {
       const newRec: AttendanceRecord = {
-        id: record.id || `att-${record.employee_id}-${record.date}`,
-        employee_id: record.employee_id!,
-        date: record.date!,
-        status: record.status || 'PRESENT',
-        site_id: record.site_id || null,
-        ot_hours: record.ot_hours || 0,
-        late_hours: record.late_hours || 0,
-        late_minutes: record.late_minutes || 0,
-        remarks: record.remarks,
+        id: recordToSave.id || `att-${recordToSave.employee_id}-${recordToSave.date}`,
+        employee_id: recordToSave.employee_id!,
+        date: recordToSave.date!,
+        status: recordToSave.status || 'PRESENT',
+        site_id: primary_site_id,
+        site_ids: site_ids,
+        ot_hours: recordToSave.ot_hours || 0,
+        late_hours: recordToSave.late_hours || 0,
+        late_minutes: recordToSave.late_minutes || 0,
+        labour_count: recordToSave.labour_count || 0,
+        remarks: recordToSave.remarks,
       };
       records.push(newRec);
       if (!savedRecord) savedRecord = newRec;
@@ -358,17 +396,24 @@ export class DataService {
   static async bulkSaveAttendance(records: Partial<AttendanceRecord>[]): Promise<void> {
     const client = getSupabaseClient();
     if (client && records.length > 0) {
-      const payload = records.map((r) => ({
-        employee_id: r.employee_id,
-        date: r.date,
-        status: r.status || 'PRESENT',
-        site_id: r.site_id || null,
-        ot_hours: r.ot_hours || 0,
-        late_hours: r.late_hours || 0,
-        late_minutes: r.late_minutes || 0,
-        remarks: r.remarks || null,
-        updated_at: new Date().toISOString(),
-      }));
+      const payload = records.map((r) => {
+        const sIds = r.site_ids && Array.isArray(r.site_ids)
+          ? r.site_ids
+          : (r.site_id ? [r.site_id] : []);
+        return {
+          employee_id: r.employee_id,
+          date: r.date,
+          status: r.status || 'PRESENT',
+          site_id: sIds[0] || null,
+          site_ids: sIds,
+          ot_hours: r.ot_hours || 0,
+          late_hours: r.late_hours || 0,
+          late_minutes: r.late_minutes || 0,
+          labour_count: r.labour_count || 0,
+          remarks: r.remarks || null,
+          updated_at: new Date().toISOString(),
+        };
+      });
 
       const { error } = await client
         .from('attendance_records')
@@ -385,21 +430,34 @@ export class DataService {
     const existingRecords: AttendanceRecord[] = stored ? JSON.parse(stored) : generateInitialAttendance();
 
     records.forEach((rec) => {
+      const sIds = rec.site_ids && Array.isArray(rec.site_ids)
+        ? rec.site_ids
+        : (rec.site_id ? [rec.site_id] : []);
+      const primary_site_id = sIds[0] || null;
+
+      const normalizedRec = {
+        ...rec,
+        site_id: primary_site_id,
+        site_ids: sIds,
+      };
+
       const idx = existingRecords.findIndex(
         (r) => r.employee_id === rec.employee_id && r.date === rec.date
       );
       if (idx >= 0) {
-        existingRecords[idx] = { ...existingRecords[idx], ...rec } as AttendanceRecord;
+        existingRecords[idx] = { ...existingRecords[idx], ...normalizedRec } as AttendanceRecord;
       } else {
         existingRecords.push({
           id: `att-${rec.employee_id}-${rec.date}`,
           employee_id: rec.employee_id!,
           date: rec.date!,
           status: rec.status || 'PRESENT',
-          site_id: rec.site_id || null,
+          site_id: primary_site_id,
+          site_ids: sIds,
           ot_hours: rec.ot_hours || 0,
           late_hours: rec.late_hours || 0,
           late_minutes: rec.late_minutes || 0,
+          labour_count: rec.labour_count || 0,
           remarks: rec.remarks,
         });
       }

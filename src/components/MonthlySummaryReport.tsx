@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { Employee, Site, AttendanceRecord, MonthlyEmployeeSummary } from '../types';
+import { getRecordSiteIds } from '../types';
 import {
   FileSpreadsheet,
   FileText,
@@ -68,8 +69,11 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
       otHours += Number(r.ot_hours) || 0;
       totalLateMinutes += Number(r.late_minutes) || 0;
 
-      if (r.site_id && (r.status === 'PRESENT' || r.status === 'HALF_DAY')) {
-        siteDays[r.site_id] = (siteDays[r.site_id] || 0) + 1;
+      if (r.status === 'PRESENT' || r.status === 'HALF_DAY') {
+        const sIds = getRecordSiteIds(r);
+        sIds.forEach((sId) => {
+          siteDays[sId] = (siteDays[sId] || 0) + 1;
+        });
       }
     });
 
