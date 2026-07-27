@@ -8,13 +8,14 @@ import { SiteLocationsManager } from './components/SiteLocationsManager';
 import { MasterDataManager } from './components/MasterDataManager';
 import { SupabaseModal } from './components/SupabaseModal';
 import { LoginPage } from './components/LoginPage';
-import type { ActiveTab, Employee, Site, AttendanceRecord, SupabaseConfig } from './types';
+import type { ActiveTab, Employee, Site, AttendanceRecord, SupabaseConfig, AppUser } from './types';
 import { DataService, getStoredConfig } from './lib/supabaseClient';
 import confetti from 'canvas-confetti';
 import { AlertTriangle, X } from 'lucide-react';
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const today = new Date();
   const [selectedMonth, setSelectedMonth] = useState<number>(today.getMonth() + 1);
@@ -50,8 +51,10 @@ export default function App() {
   };
 
   useEffect(() => {
-    loadData();
-  }, [selectedYear, selectedMonth]);
+    if (isAuthenticated) {
+      loadData();
+    }
+  }, [selectedYear, selectedMonth, isAuthenticated]);
 
   // Intercept Navigation if Unsaved Changes Exist
   const handleTabChange = (newTab: ActiveTab) => {
@@ -143,8 +146,15 @@ export default function App() {
     }
   };
 
-  if (!isAuthenticated) {
-    return <LoginPage onLoginSuccess={() => setIsAuthenticated(true)} />;
+  if (!isAuthenticated || !currentUser) {
+    return (
+      <LoginPage
+        onLoginSuccess={(user: AppUser) => {
+          setCurrentUser(user);
+          setIsAuthenticated(true);
+        }}
+      />
+    );
   }
 
   return (
@@ -165,7 +175,11 @@ export default function App() {
           supabaseConfig={supabaseConfig}
           onOpenSupabaseModal={() => setIsSupabaseModalOpen(true)}
           onResetDemoData={handleResetDemoData}
-          onLogout={() => setIsAuthenticated(false)}
+          onLogout={() => {
+            setCurrentUser(null);
+            setIsAuthenticated(false);
+          }}
+          currentUser={currentUser}
         />
 
         {/* Dynamic View Body */}
