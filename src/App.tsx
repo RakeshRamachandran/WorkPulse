@@ -51,6 +51,7 @@ export default function App() {
   const [sites, setSites] = useState<Site[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
   const [supabaseConfig, setSupabaseConfig] = useState<SupabaseConfig>(getStoredConfig());
   const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState<boolean>(false);
@@ -60,8 +61,8 @@ export default function App() {
   const [hasUnsavedAttendance, setHasUnsavedAttendance] = useState<boolean>(false);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (showLoadingSpinner = true) => {
+    if (showLoadingSpinner) setLoading(true);
     try {
       const emps = await DataService.getEmployees();
       const st = await DataService.getSites();
@@ -71,9 +72,18 @@ export default function App() {
       setSites(st);
       setAttendanceRecords(recs);
     } catch (err) {
-      console.error('Failed to load initial workspace data:', err);
+      console.error('Failed to load workspace data:', err);
     } finally {
-      setLoading(false);
+      if (showLoadingSpinner) setLoading(false);
+    }
+  };
+
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    try {
+      await loadData(false);
+    } finally {
+      setTimeout(() => setIsSyncing(false), 500);
     }
   };
 
@@ -212,6 +222,8 @@ export default function App() {
           supabaseConfig={supabaseConfig}
           onOpenSupabaseModal={() => setIsSupabaseModalOpen(true)}
           onResetDemoData={handleResetDemoData}
+          onRefreshData={handleManualSync}
+          isRefreshing={isSyncing}
           onLogout={() => {
             localStorage.removeItem(SESSION_STORAGE_KEY);
             setCurrentUser(null);

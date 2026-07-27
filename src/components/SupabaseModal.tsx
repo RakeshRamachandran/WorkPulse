@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { SupabaseConfig } from '../types';
-import { Database, Check, Copy, ExternalLink, RefreshCw, X, ShieldCheck } from 'lucide-react';
-import { saveStoredConfig, resetSupabaseClient } from '../lib/supabaseClient';
+import { Database, CheckCircle2, AlertCircle, RefreshCw, X, ShieldCheck, Wifi, WifiOff } from 'lucide-react';
+import { getSupabaseClient } from '../lib/supabaseClient';
 
 interface SupabaseModalProps {
   isOpen: boolean;
@@ -16,196 +16,150 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
   config,
   onUpdateConfig,
 }) => {
-  const [url, setUrl] = useState(config.url);
-  const [anonKey, setAnonKey] = useState(config.anonKey);
-  const [testing, setTesting] = useState(false);
-  const [copiedSql, setCopiedSql] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; msg: string } | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      handleCheckConnection();
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const handleSave = async () => {
-    setTesting(true);
+  const handleCheckConnection = async () => {
+    setChecking(true);
     setTestResult(null);
 
     try {
-      if (!url.trim() || !anonKey.trim()) {
-        const newConf = { url: '', anonKey: '', isConnected: false };
-        saveStoredConfig(newConf);
-        resetSupabaseClient();
-        onUpdateConfig(newConf);
-        setTestResult({ success: true, msg: 'Switched to Local Storage Database mode.' });
-        setTesting(false);
+      const client = getSupabaseClient();
+      if (!client) {
+        onUpdateConfig({ ...config, isConnected: false });
+        setTestResult({ success: false, msg: 'No active online database configured.' });
+        setChecking(false);
         return;
       }
 
-      // Quick test fetch
-      const res = await fetch(`${url.replace(/\/$/, '')}/rest/v1/`, {
-        headers: {
-          apikey: anonKey,
-          Authorization: `Bearer ${anonKey}`,
-        },
-      });
+      // Quick query test to check DB responsiveness
+      const { error } = await client.from('employees').select('id', { count: 'exact', head: true });
 
-      if (res.ok || res.status === 200 || res.status === 404) {
-        const newConf = { url: url.trim(), anonKey: anonKey.trim(), isConnected: true };
-        saveStoredConfig(newConf);
-        resetSupabaseClient();
-        onUpdateConfig(newConf);
-        setTestResult({ success: true, msg: 'DB connected successfully!' });
+      if (!error) {
+        onUpdateConfig({ ...config, isConnected: true });
+        setTestResult({ success: true, msg: 'Online database connection is active and responsive.' });
       } else {
-        setTestResult({ success: false, msg: `Connection failed: ${res.statusText}` });
+        onUpdateConfig({ ...config, isConnected: false });
+        setTestResult({ success: false, msg: `Connection check returned: ${error.message}` });
       }
     } catch (err: any) {
-      setTestResult({ success: false, msg: err.message || 'Failed to reach Supabase project URL.' });
+      onUpdateConfig({ ...config, isConnected: false });
+      setTestResult({ success: false, msg: err?.message || 'Failed to reach online database.' });
     } finally {
-      setTesting(false);
+      setChecking(false);
     }
   };
 
-  const sqlSchemaSnippet = `-- Run this in Supabase SQL Editor
-CREATE TABLE IF NOT EXISTS public.employees (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    emp_id TEXT NOT NULL UNIQUE,
-    name TEXT NOT NULL,
-    designation TEXT NOT NULL DEFAULT 'Worker',
-    category TEXT NOT NULL DEFAULT 'Worker',
-    is_active BOOLEAN NOT NULL DEFAULT true,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS public.sites (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name TEXT NOT NULL UNIQUE,
-    location TEXT,
-    code TEXT,
-    is_active BOOLEAN NOT NULL DEFAULT true
-);
-
-CREATE TABLE IF NOT EXISTS public.attendance_records (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    employee_id UUID NOT NULL REFERENCES public.employees(id) ON DELETE CASCADE,
-    date DATE NOT NULL,
-    status TEXT NOT NULL DEFAULT 'PRESENT',
-    site_id UUID REFERENCES public.sites(id) ON DELETE SET NULL,
-    ot_hours NUMERIC(4, 2) NOT NULL DEFAULT 0.0,
-    late_hours INT NOT NULL DEFAULT 0,
-    late_minutes INT NOT NULL DEFAULT 0,
-    remarks TEXT,
-    CONSTRAINT unique_emp_date UNIQUE (employee_id, date)
-);
-
-CREATE TABLE IF NOT EXISTS public.users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    username TEXT NOT NULL UNIQUE,
-    password TEXT NOT NULL,
-    role TEXT NOT NULL DEFAULT 'Admin',
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-INSERT INTO public.users (username, password, role) VALUES
-    ('venksuperadmin', '$uper@dmin$34', 'Superadmin'),
-    ('venkadmin', '@dmin$321', 'Admin')
-ON CONFLICT (username) DO UPDATE SET password = EXCLUDED.password, role = EXCLUDED.role;`;
-
-  const copySql = () => {
-    navigator.clipboard.writeText(sqlSchemaSnippet);
-    setCopiedSql(true);
-    setTimeout(() => setCopiedSql(false), 2000);
-  };
+  const isConnected = config.isConnected;
 
   return (
-    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-xl p-6 shadow-2xl space-y-6 relative">
+    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in">
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md p-6 shadow-2xl space-y-6 relative">
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 text-slate-400 hover:text-white bg-slate-800 p-1.5 rounded-full transition"
+          className="absolute top-5 right-5 text-slate-400 hover:text-white bg-slate-800 p-1.5 rounded-full transition cursor-pointer"
+          title="Close"
         >
           <X className="w-4 h-4" />
         </button>
 
+        {/* Modal Header */}
         <div className="flex items-center space-x-3">
-          <div className="bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-2xl text-emerald-400">
+          <div className={`p-3 rounded-2xl border ${isConnected ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-amber-500/10 border-amber-500/30 text-amber-400'}`}>
             <Database className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-xl font-bold text-white">Supabase Connection Settings</h3>
+            <h3 className="text-lg font-bold text-white">Database Status</h3>
             <p className="text-xs text-slate-400 mt-0.5">
-              Connect your cloud database or use built-in offline local storage.
+              Online Database Connection Status
             </p>
           </div>
         </div>
 
-        {/* Input Form */}
-        <div className="space-y-4 bg-slate-950 p-4 rounded-2xl border border-slate-800">
-          <div>
-            <label className="text-xs font-semibold text-slate-300 block mb-1">
-              Supabase Project URL
-            </label>
-            <input
-              type="text"
-              placeholder="https://your-project-id.supabase.co"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
+        {/* Main Connection Status Card */}
+        <div className={`p-5 rounded-2xl border flex flex-col items-center justify-center text-center space-y-3 ${
+          isConnected
+            ? 'bg-emerald-950/30 border-emerald-500/30'
+            : 'bg-amber-950/30 border-amber-500/30'
+        }`}>
+          <div className="relative">
+            <div className={`w-14 h-14 rounded-full flex items-center justify-center border-2 ${
+              isConnected
+                ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400'
+                : 'bg-amber-500/20 border-amber-500 text-amber-400'
+            }`}>
+              {isConnected ? (
+                <Wifi className="w-7 h-7" />
+              ) : (
+                <WifiOff className="w-7 h-7" />
+              )}
+            </div>
+            {isConnected && (
+              <span className="absolute top-0 right-0 flex h-3.5 w-3.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500"></span>
+              </span>
+            )}
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-slate-300 block mb-1">
-              Supabase Anon Key (API Key)
-            </label>
-            <input
-              type="password"
-              placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-              value={anonKey}
-              onChange={(e) => setAnonKey(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
+            <div className="flex items-center justify-center space-x-2">
+              <h4 className="text-base font-bold text-white">
+                {isConnected ? 'Online Database Connected' : 'Database Disconnected'}
+              </h4>
+              {isConnected ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              ) : (
+                <AlertCircle className="w-4 h-4 text-amber-400" />
+              )}
+            </div>
+            <p className="text-xs text-slate-300 mt-1 max-w-xs">
+              {isConnected
+                ? 'The application is connected to the cloud database.'
+                : 'Unable to connect to the online database.'}
+            </p>
           </div>
 
           {testResult && (
-            <div
-              className={`p-3 rounded-xl text-xs font-medium flex items-center space-x-2 ${testResult.success
-                  ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-500/30'
-                  : 'bg-rose-950/60 text-rose-300 border border-rose-500/30'
-                }`}
-            >
-              <ShieldCheck className="w-4 h-4 shrink-0" />
-              <span>{testResult.msg}</span>
+            <div className={`w-full text-left p-3 rounded-xl text-xs font-medium flex items-start space-x-2 ${
+              testResult.success
+                ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/30'
+                : 'bg-rose-950/80 text-rose-300 border border-rose-500/30'
+            }`}>
+              <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" />
+              <span className="break-words">{testResult.msg}</span>
             </div>
           )}
-
-          <div className="flex justify-end space-x-3 pt-2">
-            <button
-              onClick={handleSave}
-              disabled={testing}
-              className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs px-5 py-2 rounded-xl shadow-lg transition flex items-center space-x-2"
-            >
-              {testing && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
-              <span>{testing ? 'Testing...' : 'Save & Verify Connection'}</span>
-            </button>
-          </div>
         </div>
 
-        {/* Database SQL Setup Script helper */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-300">Supabase SQL Schema Setup</span>
-            <button
-              onClick={copySql}
-              className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold flex items-center space-x-1"
-            >
-              {copiedSql ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copiedSql ? 'Copied SQL!' : 'Copy SQL Schema'}</span>
-            </button>
-          </div>
+        {/* Action Controls */}
+        <div className="flex items-center justify-between pt-2 border-t border-slate-800">
+          <button
+            onClick={handleCheckConnection}
+            disabled={checking}
+            className="bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs px-4 py-2 rounded-xl border border-slate-700 transition flex items-center space-x-2 cursor-pointer disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${checking ? 'animate-spin text-emerald-400' : ''}`} />
+            <span>{checking ? 'Checking...' : 'Recheck Status'}</span>
+          </button>
 
-          <pre className="bg-slate-950 border border-slate-800 p-3 rounded-xl text-[10px] text-slate-400 font-mono overflow-x-auto max-h-36">
-            {sqlSchemaSnippet}
-          </pre>
+          <button
+            onClick={onClose}
+            className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs px-5 py-2 rounded-xl shadow-lg transition cursor-pointer"
+          >
+            Close
+          </button>
         </div>
       </div>
     </div>
   );
 };
+

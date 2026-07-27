@@ -111,6 +111,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return matchesSearch && matchesCategory;
   });
 
+  const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
+  const monthShortName = new Date(selectedYear, selectedMonth - 1, 1).toLocaleDateString('en-US', {
+    month: 'short',
+  });
+
   // Aggregated totals for overview
   const totalEmployees = filteredSummaries.length;
   const totalWorkingDaysAll = filteredSummaries.reduce((acc, s) => acc + s.workingDays, 0);
@@ -272,8 +277,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <Briefcase className="w-4 h-4 shrink-0" />
             </div>
           </div>
-          <p className="text-3xl font-extrabold text-blue-600 mt-3 leading-none">{totalWorkingDaysAll}</p>
-          <p className="text-xs text-slate-500 font-medium mt-1">Days Worked</p>
+          <p className="text-3xl font-extrabold text-blue-600 mt-3 leading-none">{daysInMonth}</p>
+          <p className="text-xs text-slate-500 font-medium mt-1">Total Days ({monthShortName})</p>
         </div>
 
         {/* Card 3: Leave Days */}

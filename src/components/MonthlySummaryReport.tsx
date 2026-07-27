@@ -110,6 +110,11 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
     return matchesSearch && matchesCategory;
   });
 
+  const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
+  const monthShortName = new Date(selectedYear, selectedMonth - 1, 1).toLocaleDateString('en-US', {
+    month: 'short',
+  });
+
   // Aggregate Totals
   const totalEmployees = filteredSummaries.length;
   const totalWorkingDaysAll = filteredSummaries.reduce((acc, s) => acc + s.workingDays, 0);
@@ -153,7 +158,7 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Monthly Summary Report - ${monthName}`, logoImg ? 64 : 14, 22);
+    doc.text(`Monthly Attendance Summary - ${monthName}`, logoImg ? 64 : 14, 22);
 
     doc.setFontSize(8.5);
     doc.text(`Generated: ${new Date().toLocaleDateString()}`, 155, 22);
@@ -172,7 +177,7 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
 
     tableData.push([
       'TOTAL',
-      `${totalEmployees} Employees`,
+      `${totalEmployees} Staff`,
       totalWorkingDaysAll.toString(),
       totalLeaveDaysAll.toString(),
       '-',
@@ -185,7 +190,7 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
     autoTable(doc, {
       startY: 36,
       head: [
-        ['Emp ID', 'Employee', 'Working Days', 'Leave Days', 'Holiday', 'Regular Hours', 'OT Hours', 'Total Hours', 'Late Time'],
+        ['Emp ID', 'Employee', 'Work Days', 'Leave Days', 'Holiday', 'Regular Hours', 'OT Hours', 'Total Hours', 'Late Time'],
       ],
       body: tableData,
       theme: 'grid',
@@ -205,8 +210,9 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
         3: { halign: 'center' },
         4: { halign: 'center' },
         5: { halign: 'center' },
-        6: { halign: 'center', fontStyle: 'bold' },
-        7: { halign: 'center' },
+        6: { halign: 'center' },
+        7: { halign: 'center', fontStyle: 'bold' },
+        8: { halign: 'center' },
       },
     });
 
@@ -231,7 +237,7 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
 
     excelRows.push({
       'Employee ID': 'TOTAL',
-      'Employee Name': `${totalEmployees} Employees`,
+      'Employee Name': `${totalEmployees} Staff`,
       'Designation': '',
       'Category': '',
       'Working Days': totalWorkingDaysAll,
@@ -245,7 +251,7 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
 
     const worksheet = XLSX.utils.json_to_sheet(excelRows);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Monthly Report');
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Monthly Attendance');
 
     XLSX.writeFile(workbook, `Venkateswara_Monthly_Report_${selectedMonth}_${selectedYear}.xlsx`);
   };
@@ -272,8 +278,8 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
               <Briefcase className="w-5 h-5" />
             </div>
           </div>
-          <p className="text-[36px] font-bold text-blue-600 mt-3 leading-none">{totalWorkingDaysAll}</p>
-          <p className="text-[14px] text-[#6B7280] font-normal mt-1.5">Total Days</p>
+          <p className="text-[36px] font-bold text-blue-600 mt-3 leading-none">{daysInMonth}</p>
+          <p className="text-[14px] text-[#6B7280] font-normal mt-1.5">Total Days ({monthShortName})</p>
         </div>
 
         <div className="bg-white border border-[#E5E7EB] p-[20px] rounded-[14px] shadow-[0_2px_10px_rgba(0,0,0,0.06)] hover:-translate-y-0.5 hover:shadow-[0_6px_18px_rgba(0,0,0,0.08)] transition-all duration-200 ease-out group">
