@@ -13,9 +13,35 @@ import { DataService, getStoredConfig } from './lib/supabaseClient';
 import confetti from 'canvas-confetti';
 import { AlertTriangle, X } from 'lucide-react';
 
+const SESSION_STORAGE_KEY = 'workpulse_auth_session';
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+interface StoredSession {
+  user: AppUser;
+  timestamp: number;
+}
+
+function getValidStoredSession(): AppUser | null {
+  try {
+    const raw = localStorage.getItem(SESSION_STORAGE_KEY);
+    if (!raw) return null;
+    const session: StoredSession = JSON.parse(raw);
+    if (session && session.user && session.timestamp) {
+      if (Date.now() - session.timestamp < ONE_DAY_MS) {
+        return session.user;
+      }
+    }
+    localStorage.removeItem(SESSION_STORAGE_KEY);
+  } catch (e) {
+    localStorage.removeItem(SESSION_STORAGE_KEY);
+  }
+  return null;
+}
+
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
+  const initialUser = getValidStoredSession();
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(initialUser);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(initialUser !== null);
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const today = new Date();
   const [selectedMonth, setSelectedMonth] = useState<number>(today.getMonth() + 1);
@@ -150,6 +176,11 @@ export default function App() {
     return (
       <LoginPage
         onLoginSuccess={(user: AppUser) => {
+          const sessionPayload: StoredSession = {
+            user,
+            timestamp: Date.now(),
+          };
+          localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sessionPayload));
           setCurrentUser(user);
           setIsAuthenticated(true);
         }}
@@ -176,6 +207,7 @@ export default function App() {
           onOpenSupabaseModal={() => setIsSupabaseModalOpen(true)}
           onResetDemoData={handleResetDemoData}
           onLogout={() => {
+            localStorage.removeItem(SESSION_STORAGE_KEY);
             setCurrentUser(null);
             setIsAuthenticated(false);
           }}
