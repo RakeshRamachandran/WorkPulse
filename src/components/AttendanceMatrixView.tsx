@@ -190,7 +190,11 @@ export const AttendanceMatrixView: React.FC<AttendanceMatrixViewProps> = ({
                       recordLookup.get(`${emp.id}_${day}`) ||
                       recordLookup.get(`${emp.emp_id}_${day}`);
 
-                    const status = rec?.status;
+                    const dObj = new Date(selectedYear, selectedMonth - 1, day);
+                    const isSunday = dObj.getDay() === 0;
+
+                    const rawStatus = rec?.status;
+                    const status = (rawStatus && rawStatus.trim() !== '') ? rawStatus : (isSunday ? 'HOLIDAY' : undefined);
                     const siteIds = getRecordSiteIds(rec);
                     const assignedSites = siteIds.map((id) => siteMap.get(id)).filter(Boolean) as Site[];
                     const siteNamesStr = assignedSites.length > 0

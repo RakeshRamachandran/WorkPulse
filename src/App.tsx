@@ -14,7 +14,7 @@ import confetti from 'canvas-confetti';
 import { AlertTriangle, X } from 'lucide-react';
 
 const SESSION_STORAGE_KEY = 'workpulse_auth_session';
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+const SESSION_DURATION_MS = 2 * 60 * 60 * 1000; // 2 hours session logout duration
 
 interface StoredSession {
   user: AppUser;
@@ -27,7 +27,7 @@ function getValidStoredSession(): AppUser | null {
     if (!raw) return null;
     const session: StoredSession = JSON.parse(raw);
     if (session && session.user && session.timestamp) {
-      if (Date.now() - session.timestamp < ONE_DAY_MS) {
+      if (Date.now() - session.timestamp < SESSION_DURATION_MS) {
         return session.user;
       }
     }

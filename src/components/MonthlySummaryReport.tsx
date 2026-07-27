@@ -119,6 +119,25 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
     month: 'short',
   });
 
+  // Calculate holiday days in the month (Sundays + saved HOLIDAY records)
+  const holidayDaysSet = new Set<number>();
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dObj = new Date(selectedYear, selectedMonth - 1, d);
+    if (dObj.getDay() === 0) holidayDaysSet.add(d);
+  }
+  attendanceRecords.forEach((r) => {
+    if (r.status === 'HOLIDAY' && r.date) {
+      const parts = r.date.substring(0, 10).split('-');
+      if (parts.length === 3 && parseInt(parts[0], 10) === selectedYear && parseInt(parts[1], 10) === selectedMonth) {
+        const dayNum = parseInt(parts[2], 10);
+        if (!isNaN(dayNum)) holidayDaysSet.add(dayNum);
+      }
+    }
+  });
+
+  const totalHolidaysInMonth = holidayDaysSet.size;
+  const netWorkingDays = daysInMonth - totalHolidaysInMonth;
+
   // Aggregate Totals
   const totalEmployees = filteredSummaries.length;
   const totalWorkingDaysAll = filteredSummaries.reduce((acc, s) => acc + s.workingDays, 0);
@@ -282,8 +301,8 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
               <Briefcase className="w-5 h-5" />
             </div>
           </div>
-          <p className="text-[36px] font-bold text-blue-600 mt-3 leading-none">{daysInMonth}</p>
-          <p className="text-[14px] text-[#6B7280] font-normal mt-1.5">Total Days ({monthShortName})</p>
+          <p className="text-[36px] font-bold text-blue-600 mt-3 leading-none">{netWorkingDays}</p>
+          <p className="text-[14px] text-[#6B7280] font-normal mt-1.5">{daysInMonth} Total Days ({totalHolidaysInMonth} Holidays)</p>
         </div>
 
         <div className="bg-white border border-[#E5E7EB] p-[20px] rounded-[14px] shadow-[0_2px_10px_rgba(0,0,0,0.06)] hover:-translate-y-0.5 hover:shadow-[0_6px_18px_rgba(0,0,0,0.08)] transition-all duration-200 ease-out group">

@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import type { Employee, Site, AttendanceRecord, AttendanceStatus } from '../types';
 import { getRecordSiteIds, isSubcontractor } from '../types';
 import { MultiSiteSelect } from './MultiSiteSelect';
@@ -19,6 +20,7 @@ import {
   X,
   Users,
   HardHat,
+  RotateCcw,
 } from 'lucide-react';
 
 interface StatusSelectProps {
@@ -35,36 +37,83 @@ const STATUS_ITEMS = [
 
 export const StatusSelect: React.FC<StatusSelectProps> = ({ value, onChange }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [dropUp, setDropUp] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState<{
+    left: number;
+    top?: number;
+    bottom?: number;
+  }>({ left: 0 });
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const updatePosition = useCallback(() => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+
+    const dropUp = spaceBelow < 220 && spaceAbove > spaceBelow;
+    const menuWidth = 208;
+    let left = rect.left + rect.width / 2 - menuWidth / 2;
+    if (left + menuWidth > window.innerWidth - 12) {
+      left = window.innerWidth - menuWidth - 12;
+    }
+    if (left < 12) left = 12;
+
+    if (dropUp) {
+      setCoords({
+        left,
+        bottom: window.innerHeight - rect.top + 6,
+      });
+    } else {
+      setCoords({
+        left,
+        top: rect.bottom + 6,
+      });
+    }
   }, []);
 
   const handleToggle = () => {
-    if (!isOpen && containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      const spaceBelow = window.innerHeight - rect.bottom;
-      if (spaceBelow < 220 && rect.top > 200) {
-        setDropUp(true);
-      } else {
-        setDropUp(false);
-      }
+    if (!isOpen) {
+      updatePosition();
     }
     setIsOpen(!isOpen);
   };
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleScrollOrResize = () => {
+      updatePosition();
+    };
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(target) &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(target)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScrollOrResize, true);
+    window.addEventListener('resize', handleScrollOrResize);
+    document.addEventListener('mousedown', handleClickOutside);
+
+    return () => {
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen, updatePosition]);
+
   const activeItem = STATUS_ITEMS.find((item) => item.value === value);
 
   return (
-    <div className={`relative inline-block text-center ${isOpen ? 'z-50' : 'z-10'}`} ref={containerRef}>
+    <div className="inline-block text-center" ref={containerRef}>
       <button
         type="button"
         onClick={handleToggle}
@@ -79,34 +128,42 @@ export const StatusSelect: React.FC<StatusSelectProps> = ({ value, onChange }) =
         <ChevronDown className={`w-3.5 h-3.5 opacity-80 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
-      {isOpen && (
-        <div
-          className={`absolute left-1/2 -translate-x-1/2 w-52 bg-white border border-[#E5E7EB] rounded-[12px] shadow-[0_8px_24px_rgba(0,0,0,0.18)] p-1.5 z-50 animate-in fade-in duration-150 ${
-            dropUp ? 'bottom-full mb-1.5 origin-bottom' : 'top-full mt-1.5 origin-top'
-          }`}
-        >
-          {STATUS_ITEMS.map((item) => (
-            <button
-              key={item.value}
-              type="button"
-              onClick={() => {
-                onChange(item.value);
-                setIsOpen(false);
-              }}
-              className={`w-full text-left px-3 py-2 rounded-[8px] text-[13px] font-bold flex items-center space-x-2.5 transition cursor-pointer ${
-                value === item.value
-                  ? 'bg-slate-100 text-[#111827]'
-                  : 'hover:bg-[#F8FAFC] text-[#374151]'
-              }`}
-            >
-              <span className={`w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-bold text-white shrink-0 ${item.color.split(' ')[0]}`}>
-                {item.code}
-              </span>
-              <span>{item.label}</span>
-            </button>
-          ))}
-        </div>
-      )}
+      {isOpen &&
+        createPortal(
+          <div
+            ref={dropdownRef}
+            style={{
+              position: 'fixed',
+              left: `${coords.left}px`,
+              top: coords.top !== undefined ? `${coords.top}px` : 'auto',
+              bottom: coords.bottom !== undefined ? `${coords.bottom}px` : 'auto',
+              zIndex: 9999,
+            }}
+            className="w-52 bg-white border border-[#E5E7EB] rounded-[12px] shadow-[0_8px_24px_rgba(0,0,0,0.18)] p-1.5 animate-in fade-in duration-150"
+          >
+            {STATUS_ITEMS.map((item) => (
+              <button
+                key={item.value}
+                type="button"
+                onClick={() => {
+                  onChange(item.value);
+                  setIsOpen(false);
+                }}
+                className={`w-full text-left px-3 py-2 rounded-[8px] text-[13px] font-bold flex items-center space-x-2.5 transition cursor-pointer ${
+                  value === item.value
+                    ? 'bg-slate-100 text-[#111827]'
+                    : 'hover:bg-[#F8FAFC] text-[#374151]'
+                }`}
+              >
+                <span className={`w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-bold text-white shrink-0 ${item.color.split(' ')[0]}`}>
+                  {item.code}
+                </span>
+                <span>{item.label}</span>
+              </button>
+            ))}
+          </div>,
+          document.body
+        )}
     </div>
   );
 };
@@ -158,14 +215,23 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
 
   useEffect(() => {
     const map: Record<string, Partial<AttendanceRecord>> = {};
+    const dateObj = new Date(selectedYear, selectedMonth - 1, selectedDay);
+    const isSunday = dateObj.getDay() === 0;
+
     employees.forEach((emp) => {
       const existing = attendanceRecords.find(
         (r) => r.employee_id === emp.id && r.date === dateStr
       );
       if (existing) {
         const siteIds = getRecordSiteIds(existing);
+        const resolvedStatus = (existing.status && existing.status.trim() !== '') 
+          ? existing.status 
+          : (isSunday ? 'HOLIDAY' : existing.status);
+
         map[emp.id] = {
           ...existing,
+          status: resolvedStatus as any,
+          remarks: existing.remarks || (isSunday ? 'Sunday Weekly Off' : undefined),
           site_ids: siteIds,
           site_id: siteIds[0] || null,
         };
@@ -173,14 +239,14 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
         map[emp.id] = {
           employee_id: emp.id,
           date: dateStr,
-          status: '' as any,
+          status: isSunday ? 'HOLIDAY' : ('' as any),
           site_id: null,
           site_ids: [],
           ot_hours: 0,
           late_hours: 0,
           late_minutes: 0,
           labour_count: 0,
-          remarks: undefined,
+          remarks: isSunday ? 'Sunday Weekly Off' : undefined,
         };
       }
     });
@@ -261,6 +327,53 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
           status: 'PRESENT',
           site_ids: curSiteIds,
           site_id: curSiteIds[0] || null,
+        };
+      });
+      return next;
+    });
+    setHasUnsavedChanges(true);
+    if (onUnsavedStatusChange) onUnsavedStatusChange(true);
+  };
+
+  const handleSetAllAsHoliday = () => {
+    setDraftRecords((prev) => {
+      const next = { ...prev };
+      visibleEmployees.forEach((emp) => {
+        const cur = next[emp.id] || {};
+        next[emp.id] = {
+          ...cur,
+          employee_id: emp.id,
+          date: dateStr,
+          status: 'HOLIDAY',
+          site_ids: [],
+          site_id: null,
+          ot_hours: 0,
+          remarks: 'Sunday Weekly Off',
+        };
+      });
+      return next;
+    });
+    setHasUnsavedChanges(true);
+    if (onUnsavedStatusChange) onUnsavedStatusChange(true);
+  };
+
+  const handleClearAllStatus = () => {
+    setDraftRecords((prev) => {
+      const next = { ...prev };
+      visibleEmployees.forEach((emp) => {
+        const cur = next[emp.id] || {};
+        next[emp.id] = {
+          ...cur,
+          employee_id: emp.id,
+          date: dateStr,
+          status: '' as any,
+          site_ids: [],
+          site_id: null,
+          ot_hours: 0,
+          late_hours: 0,
+          late_minutes: 0,
+          labour_count: 0,
+          remarks: undefined,
         };
       });
       return next;
@@ -389,18 +502,47 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
                 <span className="text-[16px] font-semibold text-[#111827]">
                   {new Date(selectedYear, selectedMonth - 1, selectedDay).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                 </span>
+                {new Date(selectedYear, selectedMonth - 1, selectedDay).getDay() === 0 && (
+                  <span className="px-3 py-1 bg-purple-100 text-purple-700 text-[12px] font-bold rounded-full border border-purple-200 flex items-center gap-1.5 shrink-0">
+                    <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                    Sunday (Weekly Off)
+                  </span>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Mark All Present */}
-          <button
-            onClick={handleBulkMarkPresent}
-            className="h-[40px] bg-[#16A34A] hover:bg-[#15803D] text-white font-medium text-[14px] px-4 rounded-[10px] shadow-xs transition-all duration-200 flex items-center space-x-2 cursor-pointer active:scale-95 shrink-0"
-          >
-            <CheckCircle className="w-4 h-4 shrink-0" />
-            <span>Set All Present</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Mark All Present */}
+            <button
+              onClick={handleBulkMarkPresent}
+              className="h-[40px] bg-[#16A34A] hover:bg-[#15803D] text-white font-medium text-[14px] px-4 rounded-[10px] shadow-xs transition-all duration-200 flex items-center space-x-2 cursor-pointer active:scale-95 shrink-0"
+              title="Set status of all visible employees to Present"
+            >
+              <CheckCircle className="w-4 h-4 shrink-0" />
+              <span>Set All Present</span>
+            </button>
+
+            {/* Set All Holiday */}
+            <button
+              onClick={handleSetAllAsHoliday}
+              className="h-[40px] bg-purple-600 hover:bg-purple-700 text-white font-medium text-[14px] px-4 rounded-[10px] shadow-xs transition-all duration-200 flex items-center space-x-2 cursor-pointer active:scale-95 shrink-0"
+              title="Set status of all visible employees to Holiday"
+            >
+              <Sparkles className="w-4 h-4 shrink-0" />
+              <span>Set All Holiday</span>
+            </button>
+
+            {/* Clear All Status */}
+            <button
+              onClick={handleClearAllStatus}
+              className="h-[40px] bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-semibold text-[13px] px-3.5 rounded-[10px] shadow-xs transition-all duration-200 flex items-center space-x-2 cursor-pointer active:scale-95 shrink-0"
+              title="Clear attendance status for all visible employees"
+            >
+              <RotateCcw className="w-4 h-4 text-slate-600 shrink-0" />
+              <span>Clear Statuses</span>
+            </button>
+          </div>
         </div>
 
         {/* 4 Summary Stat Badges */}

@@ -120,6 +120,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     month: 'short',
   });
 
+  // Calculate holiday days in the month (Sundays + saved HOLIDAY records)
+  const holidayDaysSet = new Set<number>();
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dObj = new Date(selectedYear, selectedMonth - 1, d);
+    if (dObj.getDay() === 0) holidayDaysSet.add(d);
+  }
+  attendanceRecords.forEach((r) => {
+    if (r.status === 'HOLIDAY' && r.date) {
+      const parts = r.date.substring(0, 10).split('-');
+      if (parts.length === 3 && parseInt(parts[0], 10) === selectedYear && parseInt(parts[1], 10) === selectedMonth) {
+        const dayNum = parseInt(parts[2], 10);
+        if (!isNaN(dayNum)) holidayDaysSet.add(dayNum);
+      }
+    }
+  });
+
+  const totalHolidaysInMonth = holidayDaysSet.size;
+  const netWorkingDays = daysInMonth - totalHolidaysInMonth;
+
   // Aggregated totals for overview
   const totalEmployees = filteredSummaries.length;
   const totalWorkingDaysAll = filteredSummaries.reduce((acc, s) => acc + s.workingDays, 0);
@@ -281,8 +300,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <Briefcase className="w-4 h-4 shrink-0" />
             </div>
           </div>
-          <p className="text-3xl font-extrabold text-blue-600 mt-3 leading-none">{daysInMonth}</p>
-          <p className="text-xs text-slate-500 font-medium mt-1">Total Days ({monthShortName})</p>
+          <p className="text-3xl font-extrabold text-blue-600 mt-3 leading-none">{netWorkingDays}</p>
+          <p className="text-xs text-slate-500 font-medium mt-1">{daysInMonth} Total Days ({totalHolidaysInMonth} Holidays)</p>
         </div>
 
         {/* Card 3: Leave Days */}
