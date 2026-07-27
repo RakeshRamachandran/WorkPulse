@@ -244,7 +244,7 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
         >
           <Database className="w-3.5 h-3.5 text-[#16a34a] shrink-0" />
-          <span>{supabaseConfig.isConnected ? 'Supabase Connected' : 'Local Storage'}</span>
+          <span>{supabaseConfig.isConnected ? 'DB Connected' : 'Local Storage'}</span>
           {supabaseConfig.isConnected ? (
             <CheckCircle2 className="w-3.5 h-3.5 text-[#16a34a] shrink-0" />
           ) : (

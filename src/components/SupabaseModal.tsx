@@ -52,7 +52,7 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
         saveStoredConfig(newConf);
         resetSupabaseClient();
         onUpdateConfig(newConf);
-        setTestResult({ success: true, msg: 'Supabase connected successfully!' });
+        setTestResult({ success: true, msg: 'DB connected successfully!' });
       } else {
         setTestResult({ success: false, msg: `Connection failed: ${res.statusText}` });
       }
