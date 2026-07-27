@@ -119,24 +119,44 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
   const totalHoursAll = filteredSummaries.reduce((acc, s) => acc + s.totalHours, 0);
   const totalLateMinsAll = filteredSummaries.reduce((acc, s) => acc + s.totalLateMinutes, 0);
 
-  // PDF Export
-  const handleExportPDF = () => {
-    const doc = new jsPDF('portrait', 'mm', 'a4');
+  // Helper to load logo image for PDF
+  const loadLogoImage = (): Promise<HTMLImageElement | null> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'Anonymous';
+      img.src = '/logo.png';
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null);
+    });
+  };
 
+  // PDF Export
+  const handleExportPDF = async () => {
+    const doc = new jsPDF('portrait', 'mm', 'a4');
+    const logoImg = await loadLogoImage();
+
+    // Top Header Banner
     doc.setFillColor(22, 163, 74);
-    doc.rect(0, 0, 210, 28, 'F');
+    doc.rect(0, 0, 210, 32, 'F');
+
+    // Add Logo Card if loaded
+    if (logoImg) {
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(10, 5, 48, 22, 2, 2, 'F');
+      doc.addImage(logoImg, 'PNG', 12, 7, 44, 18);
+    }
 
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(16);
+    doc.setFontSize(15);
     doc.setFont('helvetica', 'bold');
-    doc.text('Venkateswara Electricals', 14, 12);
+    doc.text('Venkateswara Electricals', logoImg ? 64 : 14, 14);
 
-    doc.setFontSize(11);
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Monthly Summary Report - ${monthName}`, 14, 20);
+    doc.text(`Monthly Summary Report - ${monthName}`, logoImg ? 64 : 14, 22);
 
-    doc.setFontSize(9);
-    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 150, 20);
+    doc.setFontSize(8.5);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 155, 22);
 
     const tableData = filteredSummaries.map((s) => [
       s.employee.emp_id,
@@ -163,7 +183,7 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
     ]);
 
     autoTable(doc, {
-      startY: 34,
+      startY: 36,
       head: [
         ['Emp ID', 'Employee', 'Working Days', 'Leave Days', 'Holiday', 'Regular Hours', 'OT Hours', 'Total Hours', 'Late Time'],
       ],

@@ -1,4 +1,25 @@
-import type { Employee, Site, AttendanceRecord } from '../types';
+import type { Employee, Site, AttendanceRecord, AppUser } from '../types';
+
+export const INITIAL_USERS: AppUser[] = [
+  { username: 'venksuperadmin', role: 'Superadmin' },
+  { username: 'venkadmin', role: 'Admin' },
+];
+
+export const INITIAL_SITES: Site[] = [
+  { id: 'site-1', name: 'SFS Amber-Cordial Paradise', code: 'SFS-CP', location: 'Trivandrum', is_active: true },
+  { id: 'site-2', name: 'Artech Livespace- Vinvish Cblock', code: 'ART-VC', location: 'Trivandrum', is_active: true },
+  { id: 'site-3', name: 'Sree Dhanya Laposhe Cosmo Hospital', code: 'SD-CH', location: 'Trivandrum', is_active: true },
+  { id: 'site-4', name: 'Cordon Emerald', code: 'CE', location: 'Trivandrum', is_active: true },
+  { id: 'site-5', name: 'Dragon Stone', code: 'DS', location: 'Trivandrum', is_active: true },
+  { id: 'site-6', name: 'PRS Hospital karamana', code: 'PRS', location: 'Karamana', is_active: true },
+  { id: 'site-7', name: 'Cochin International School', code: 'CIS', location: 'Kochi', is_active: true },
+  { id: 'site-8', name: 'Icloud SIS - Powerlink', code: 'ISIS', location: 'Trivandrum', is_active: true },
+  { id: 'site-9', name: 'TRINS-Korani', code: 'TRINS', location: 'Korani', is_active: true },
+  { id: 'site-10', name: 'Leela Madhavam', code: 'LM', location: 'Trivandrum', is_active: true },
+  { id: 'site-11', name: 'Amara Resort', code: 'AR', location: 'Kovalam', is_active: true },
+  { id: 'site-12', name: 'Silver Castle Winter leaf', code: 'SCWL', location: 'Trivandrum', is_active: true },
+  { id: 'site-13', name: 'Simz Plaza', code: 'SP', location: 'Trivandrum', is_active: true },
+];
 
 export const INITIAL_EMPLOYEES: Employee[] = [
   { id: 'emp-1', emp_id: 'E001', name: 'NIRMAL KUMAR', designation: 'Site Engineer', category: 'Engineer', is_active: true },
@@ -58,86 +79,46 @@ export const INITIAL_EMPLOYEES: Employee[] = [
   { id: 'emp-55', emp_id: 'E055', name: 'SUB- BHUVANACHANDRAN', designation: 'Subcontractor', category: 'Worker', is_active: true },
 ];
 
-export const INITIAL_SITES: Site[] = [
-  { id: 'site-1', name: 'SFS Amber-Cordial Paradise', code: 'SFS-CP', location: 'Trivandrum', is_active: true },
-  { id: 'site-2', name: 'Artech Livespace- Vinvish Cblock', code: 'ART-VC', location: 'Trivandrum', is_active: true },
-  { id: 'site-3', name: 'Sree Dhanya Laposhe Cosmo Hospital', code: 'SD-CH', location: 'Trivandrum', is_active: true },
-  { id: 'site-4', name: 'Cordon Emerald', code: 'CE', location: 'Trivandrum', is_active: true },
-  { id: 'site-5', name: 'Dragon Stone', code: 'DS', location: 'Trivandrum', is_active: true },
-  { id: 'site-6', name: 'PRS Hospital karamana', code: 'PRS', location: 'Karamana', is_active: true },
-  { id: 'site-7', name: 'Cochin International School', code: 'CIS', location: 'Kochi', is_active: true },
-  { id: 'site-8', name: 'Icloud SIS - Powerlink', code: 'ISIS', location: 'Trivandrum', is_active: true },
-  { id: 'site-9', name: 'TRINS-Korani', code: 'TRINS', location: 'Korani', is_active: true },
-  { id: 'site-10', name: 'Leela Madhavam', code: 'LM', location: 'Trivandrum', is_active: true },
-  { id: 'site-11', name: 'Amara Resort', code: 'AR', location: 'Kovalam', is_active: true },
-  { id: 'site-12', name: 'Silver Castle Winter leaf', code: 'SCWL', location: 'Trivandrum', is_active: true },
-  { id: 'site-13', name: 'Simz Plaza', code: 'SP', location: 'Trivandrum', is_active: true },
-];
-
-// Helper to generate seed attendance for July 2026 matching PDF sample logic
 export function generateInitialAttendance(): AttendanceRecord[] {
   const records: AttendanceRecord[] = [];
   const year = 2026;
-  const month = 7; // July
-
-  // Pre-determined leave patterns matching Page 1 & 2 of PDF
-  const leaveCounts: Record<string, number> = {
-    'NIRMAL KUMAR': 0, 'MOHANDAS C': 0, 'AJEESH KUMAR': 0, 'RENJESH': 0, 'SABITH': 0,
-    'JAYARAM': 5, 'RENJITH R K': 2, 'PRADEEP A D': 1, 'ARUN M L': 2, 'RATHEESH S': 4,
-    'CHANDRABABU': 1, 'KIRAN': 1, 'VISHNU R': 1, 'ANURAJ': 1, 'ABHIJITH': 1,
-    'NANDAKUMAR': 4, 'NAVIN': 1, 'RAJESH R': 4, 'VISHNU J': 4, 'PRAVEEN KUMAR G': 1,
-    'AKHIL': 2, 'ARUN LAL': 4, 'ALAN': 4, 'ATHUL': 4
-  };
-
-  // Special OT data (Sabith, Jayashankar, Prabin Moses get 1 extra day = 5 working days)
-  const fiveDayEmps = ['JAYASHANKAR', 'PRABIN MOSES', 'SUJITH S'];
+  const month = 7;
+  const daysInJuly = 31;
 
   INITIAL_EMPLOYEES.forEach((emp, empIdx) => {
-    const isLeaveHeavy = (leaveCounts[emp.name] ?? 0) > 2;
-
-    // Generate days 1 to 5 for July 2026 (matching PDF preview)
-    for (let day = 1; day <= 5; day++) {
+    for (let day = 1; day <= daysInJuly; day++) {
       const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      
-      let status: 'PRESENT' | 'ABSENT' | 'HALF_DAY' | 'HOLIDAY' = 'PRESENT';
-      let siteId = INITIAL_SITES[(empIdx + day) % INITIAL_SITES.length].id;
-      let otHours = 0;
-      let lateMins = 0;
+      const dateObj = new Date(year, month - 1, day);
+      const isSunday = dateObj.getDay() === 0;
 
-      if (day === 5) {
-        // Sunday / Holiday in sample sheet
+      let status: 'PRESENT' | 'ABSENT' | 'HOLIDAY' = 'PRESENT';
+      if (isSunday) {
         status = 'HOLIDAY';
-        siteId = '';
-      } else if (isLeaveHeavy && (day === 1 || day === 4)) {
+      } else if ((empIdx + day) % 11 === 0) {
         status = 'ABSENT';
-        siteId = '';
-      } else if (emp.name === 'RENJITH R K' && (day === 1 || day === 2)) {
-        status = 'ABSENT';
-        siteId = '';
-      } else if (emp.name === 'SABITH' && day === 1) {
-        // Sabith has half day (4.5 working days in PDF)
-        status = 'HALF_DAY';
-        otHours = 1;
-      } else if (fiveDayEmps.includes(emp.name)) {
-        status = 'PRESENT';
-        otHours = 2; // Jayashankar, Prabin, Sujith OT
       }
 
-      // Add slight realistic late arrivals for testing
-      if (status === 'PRESENT' && (empIdx % 7 === 0) && day === 2) {
-        lateMins = 15 + (empIdx % 3) * 15; // 15, 30, 45 mins late
-      }
+      const site1 = INITIAL_SITES[empIdx % INITIAL_SITES.length];
+      const site2 = INITIAL_SITES[(empIdx + 2) % INITIAL_SITES.length];
+      const multiSite = day % 5 === 0;
+      const siteIds = status === 'PRESENT' ? (multiSite ? [site1.id, site2.id] : [site1.id]) : [];
+
+      const otHours = status === 'PRESENT' && (day % 3 === 0) ? 2.5 : 0;
+      const isSubcontractor = emp.designation === 'Subcontractor' || emp.name.startsWith('SUB-');
+      const labourCount = isSubcontractor && status === 'PRESENT' ? 4 + (day % 3) : 0;
 
       records.push({
-        id: `att-${emp.id}-${day}`,
+        id: `att-${emp.id}-${dateStr}`,
         employee_id: emp.id,
         date: dateStr,
         status,
-        site_id: siteId || null,
+        site_id: siteIds[0] || null,
+        site_ids: siteIds,
         ot_hours: otHours,
-        late_hours: Math.floor(lateMins / 60),
-        late_minutes: lateMins % 60,
-        remarks: lateMins > 0 ? `Late by ${lateMins} mins` : undefined
+        late_hours: 0,
+        late_minutes: 0,
+        labour_count: labourCount,
+        remarks: status === 'HOLIDAY' ? 'Sunday Weekly Off' : undefined,
       });
     }
   });

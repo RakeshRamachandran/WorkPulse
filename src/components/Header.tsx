@@ -11,7 +11,9 @@ import {
   LayoutDashboard,
   Building,
   ChevronDown,
-  LogOut
+  LogOut,
+  Menu,
+  X
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -26,33 +28,49 @@ interface HeaderProps {
   onResetDemoData?: () => void;
   onLogout?: () => void;
   currentUser?: AppUser;
+  isMobileMenuOpen: boolean;
+  setIsMobileMenuOpen: (open: boolean) => void;
 }
 
 export const Sidebar: React.FC<{
   activeTab: ActiveTab;
   setActiveTab: (tab: ActiveTab) => void;
-}> = ({ activeTab, setActiveTab }) => {
-  return (
-    <aside className="w-64 bg-white border-r border-slate-200 flex flex-col justify-between h-screen sticky top-0 z-30 shadow-xs select-none shrink-0">
+  isMobileMenuOpen: boolean;
+  setIsMobileMenuOpen: (open: boolean) => void;
+}> = ({ activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpen }) => {
+  const handleNavClick = (tab: ActiveTab) => {
+    setActiveTab(tab);
+    setIsMobileMenuOpen(false);
+  };
+
+  const navContent = (
+    <div className="flex flex-col justify-between h-full">
       <div>
         {/* Brand Logo Header */}
-        <div className="h-16 px-5 border-b border-slate-100 flex items-center">
+        <div className="h-16 px-5 border-b border-slate-100 flex items-center justify-between">
           <img
             src="/logo.png"
             alt="Venkateswara Electricals"
-            className="h-9 w-auto object-contain max-w-[200px]"
+            className="h-9 w-auto object-contain max-w-[180px]"
           />
+          <button
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Navigation Menu */}
         <nav className="p-3.5 space-y-1.5 mt-2">
           {/* Dashboard */}
           <button
-            onClick={() => setActiveTab('dashboard')}
-            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 cursor-pointer ${activeTab === 'dashboard'
-              ? 'bg-emerald-50 text-[#16a34a] font-bold border-r-4 border-[#16a34a] shadow-xs'
-              : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-semibold'
-              }`}
+            onClick={() => handleNavClick('dashboard')}
+            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 cursor-pointer ${
+              activeTab === 'dashboard'
+                ? 'bg-emerald-50 text-[#16a34a] font-bold border-r-4 border-[#16a34a] shadow-xs'
+                : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-semibold'
+            }`}
           >
             <LayoutDashboard className={`w-4 h-4 shrink-0 ${activeTab === 'dashboard' ? 'text-[#16a34a]' : 'text-slate-400'}`} />
             <span>Dashboard</span>
@@ -62,33 +80,36 @@ export const Sidebar: React.FC<{
 
           {/* Attendance Operations */}
           <button
-            onClick={() => setActiveTab('daily')}
-            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 cursor-pointer ${activeTab === 'daily'
-              ? 'bg-emerald-50 text-[#16a34a] font-bold border-r-4 border-[#16a34a] shadow-xs'
-              : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-semibold'
-              }`}
+            onClick={() => handleNavClick('daily')}
+            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 cursor-pointer ${
+              activeTab === 'daily'
+                ? 'bg-emerald-50 text-[#16a34a] font-bold border-r-4 border-[#16a34a] shadow-xs'
+                : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-semibold'
+            }`}
           >
             <Calendar className={`w-4 h-4 shrink-0 ${activeTab === 'daily' ? 'text-[#16a34a]' : 'text-slate-400'}`} />
             <span>Daily Attendance</span>
           </button>
 
           <button
-            onClick={() => setActiveTab('summary')}
-            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 cursor-pointer ${activeTab === 'summary'
-              ? 'bg-emerald-50 text-[#16a34a] font-bold border-r-4 border-[#16a34a] shadow-xs'
-              : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-semibold'
-              }`}
+            onClick={() => handleNavClick('summary')}
+            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 cursor-pointer ${
+              activeTab === 'summary'
+                ? 'bg-emerald-50 text-[#16a34a] font-bold border-r-4 border-[#16a34a] shadow-xs'
+                : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-semibold'
+            }`}
           >
             <FileSpreadsheet className={`w-4 h-4 shrink-0 ${activeTab === 'summary' ? 'text-[#16a34a]' : 'text-slate-400'}`} />
             <span>Monthly Summary</span>
           </button>
 
           <button
-            onClick={() => setActiveTab('matrix')}
-            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 cursor-pointer ${activeTab === 'matrix'
-              ? 'bg-emerald-50 text-[#16a34a] font-bold border-r-4 border-[#16a34a] shadow-xs'
-              : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-semibold'
-              }`}
+            onClick={() => handleNavClick('matrix')}
+            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 cursor-pointer ${
+              activeTab === 'matrix'
+                ? 'bg-emerald-50 text-[#16a34a] font-bold border-r-4 border-[#16a34a] shadow-xs'
+                : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-semibold'
+            }`}
           >
             <Grid className={`w-4 h-4 shrink-0 ${activeTab === 'matrix' ? 'text-[#16a34a]' : 'text-slate-400'}`} />
             <span>Attendance Matrix</span>
@@ -98,22 +119,24 @@ export const Sidebar: React.FC<{
 
           {/* Master Management */}
           <button
-            onClick={() => setActiveTab('sites')}
-            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 cursor-pointer ${activeTab === 'sites'
-              ? 'bg-emerald-50 text-[#16a34a] font-bold border-r-4 border-[#16a34a] shadow-xs'
-              : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-semibold'
-              }`}
+            onClick={() => handleNavClick('sites')}
+            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 cursor-pointer ${
+              activeTab === 'sites'
+                ? 'bg-emerald-50 text-[#16a34a] font-bold border-r-4 border-[#16a34a] shadow-xs'
+                : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-semibold'
+            }`}
           >
             <Building className={`w-4 h-4 shrink-0 ${activeTab === 'sites' ? 'text-[#16a34a]' : 'text-slate-400'}`} />
             <span>Site Locations</span>
           </button>
 
           <button
-            onClick={() => setActiveTab('masters')}
-            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 cursor-pointer ${activeTab === 'masters'
-              ? 'bg-emerald-50 text-[#16a34a] font-bold border-r-4 border-[#16a34a] shadow-xs'
-              : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-semibold'
-              }`}
+            onClick={() => handleNavClick('masters')}
+            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 cursor-pointer ${
+              activeTab === 'masters'
+                ? 'bg-emerald-50 text-[#16a34a] font-bold border-r-4 border-[#16a34a] shadow-xs'
+                : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-semibold'
+            }`}
           >
             <Users className={`w-4 h-4 shrink-0 ${activeTab === 'masters' ? 'text-[#16a34a]' : 'text-slate-400'}`} />
             <span>Employee Roster</span>
@@ -133,7 +156,31 @@ export const Sidebar: React.FC<{
           </p>
         </div>
       </div>
-    </aside>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Desktop Sidebar (lg screens) */}
+      <aside className="hidden lg:flex w-64 bg-white border-r border-slate-200 flex-col justify-between h-screen sticky top-0 z-30 shadow-xs select-none shrink-0">
+        {navContent}
+      </aside>
+
+      {/* Mobile Drawer (screens < lg) */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          {/* Backdrop Overlay */}
+          <div
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          {/* Drawer Content */}
+          <aside className="fixed inset-y-0 left-0 w-72 bg-white z-50 shadow-2xl flex flex-col justify-between animate-in slide-in-from-left duration-200">
+            {navContent}
+          </aside>
+        </div>
+      )}
+    </>
   );
 };
 
@@ -146,6 +193,8 @@ export const Header: React.FC<HeaderProps> = ({
   supabaseConfig,
   onOpenSupabaseModal,
   onLogout,
+  isMobileMenuOpen,
+  setIsMobileMenuOpen,
 }) => {
   const months = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -188,42 +237,60 @@ export const Header: React.FC<HeaderProps> = ({
   const currentInfo = pageTitles[activeTab];
 
   return (
-    <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shadow-xs sticky top-0 z-20 backdrop-blur-md bg-white/95 shrink-0">
-      {/* Title & Subtitle */}
-      <div>
-        <h1 className="text-lg font-bold text-slate-900 leading-tight">
-          {currentInfo.title}
-        </h1>
-        <p className="text-xs text-slate-500 font-normal">
-          {currentInfo.subtitle}
-        </p>
+    <header className="min-h-16 py-2 px-3 sm:px-6 bg-white border-b border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs sticky top-0 z-20 backdrop-blur-md bg-white/95 shrink-0">
+      {/* Mobile Hamburger & Page Title */}
+      <div className="flex items-center space-x-3 w-full sm:w-auto justify-between sm:justify-start">
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="lg:hidden p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition cursor-pointer shrink-0"
+            title="Toggle Menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          <div>
+            <h1 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
+              {currentInfo.title}
+            </h1>
+            <p className="text-[11px] sm:text-xs text-slate-500 font-normal hidden sm:block">
+              {currentInfo.subtitle}
+            </p>
+          </div>
+        </div>
+
+        {/* Small screen mobile logo */}
+        <img
+          src="/logo.png"
+          alt="VE Logo"
+          className="h-7 w-auto object-contain lg:hidden sm:block"
+        />
       </div>
 
       {/* Top Action Controls */}
-      <div className="flex items-center space-x-3">
+      <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3 w-full sm:w-auto">
         {/* Period Selector Pills */}
-        <div className="flex items-center space-x-2 bg-slate-50 p-1 rounded-xl border border-slate-200">
-          <span className="text-xs text-slate-500 font-semibold px-2">Month:</span>
+        <div className="flex items-center space-x-1.5 bg-slate-50 p-1 rounded-xl border border-slate-200">
+          <span className="text-[11px] sm:text-xs text-slate-500 font-semibold px-1">Month:</span>
           <div className="relative flex items-center">
             <select
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(Number(e.target.value))}
-              className="bg-white text-slate-800 text-xs font-semibold pl-3 pr-7 py-1 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#16a34a] cursor-pointer shadow-xs appearance-none"
+              className="bg-white text-slate-800 text-[11px] sm:text-xs font-semibold pl-2 pr-6 py-1 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#16a34a] cursor-pointer shadow-xs appearance-none"
             >
               {months.map((m, idx) => (
                 <option key={m} value={idx + 1}>
-                  {m}
+                  {m.substring(0, 3)}
                 </option>
               ))}
             </select>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 pointer-events-none shrink-0" />
+            <ChevronDown className="w-3 h-3 text-slate-400 absolute right-1.5 pointer-events-none shrink-0" />
           </div>
 
           <div className="relative flex items-center">
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="bg-white text-slate-800 text-xs font-semibold pl-3 pr-7 py-1 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#16a34a] cursor-pointer shadow-xs appearance-none"
+              className="bg-white text-slate-800 text-[11px] sm:text-xs font-semibold pl-2 pr-6 py-1 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#16a34a] cursor-pointer shadow-xs appearance-none"
             >
               {years.map((y) => (
                 <option key={y} value={y}>
@@ -231,20 +298,21 @@ export const Header: React.FC<HeaderProps> = ({
                 </option>
               ))}
             </select>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 pointer-events-none shrink-0" />
+            <ChevronDown className="w-3 h-3 text-slate-400 absolute right-1.5 pointer-events-none shrink-0" />
           </div>
         </div>
 
         {/* Supabase Storage Pill */}
         <button
           onClick={onOpenSupabaseModal}
-          className={`flex items-center space-x-2 text-xs font-bold px-3 py-1.5 rounded-xl border transition-all shadow-xs cursor-pointer ${supabaseConfig.isConnected
-            ? 'bg-emerald-50 text-[#16a34a] border-emerald-200 hover:bg-emerald-100'
-            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-            }`}
+          className={`flex items-center space-x-1.5 text-[11px] sm:text-xs font-bold px-2.5 py-1.5 rounded-xl border transition-all shadow-xs cursor-pointer ${
+            supabaseConfig.isConnected
+              ? 'bg-emerald-50 text-[#16a34a] border-emerald-200 hover:bg-emerald-100'
+              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+          }`}
         >
           <Database className="w-3.5 h-3.5 text-[#16a34a] shrink-0" />
-          <span>{supabaseConfig.isConnected ? 'DB Connected' : 'Local Storage'}</span>
+          <span>{supabaseConfig.isConnected ? 'Online DB' : 'Disconnected'}</span>
           {supabaseConfig.isConnected ? (
             <CheckCircle2 className="w-3.5 h-3.5 text-[#16a34a] shrink-0" />
           ) : (
@@ -253,12 +321,12 @@ export const Header: React.FC<HeaderProps> = ({
         </button>
 
         {/* User Profile Avatar & Sign Out */}
-        <div className="flex items-center space-x-2 pl-2 border-l border-slate-200">
+        <div className="flex items-center space-x-2 pl-1 border-l border-slate-200">
           <div className="relative flex items-center justify-center">
-            <div className="w-8 h-8 rounded-full bg-emerald-100 text-[#16a34a] font-bold text-xs flex items-center justify-center border border-emerald-300 shadow-xs">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-emerald-100 text-[#16a34a] font-bold text-xs flex items-center justify-center border border-emerald-300 shadow-xs">
               VE
             </div>
-            <span className="w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full absolute -bottom-0.5 -right-0.5 shrink-0" />
+            <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 bg-emerald-500 border-2 border-white rounded-full absolute -bottom-0.5 -right-0.5 shrink-0" />
           </div>
 
           {onLogout && (

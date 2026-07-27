@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { Employee, Site, AttendanceRecord, AttendanceStatus } from '../types';
 import { getRecordSiteIds } from '../types';
 import { MultiSiteSelect } from './MultiSiteSelect';
@@ -20,6 +20,78 @@ import {
   Users,
   HardHat,
 } from 'lucide-react';
+
+interface StatusSelectProps {
+  value: string;
+  onChange: (newStatus: string) => void;
+}
+
+const STATUS_ITEMS = [
+  { value: 'PRESENT', code: 'P', label: 'P - Present (Full Day)', color: 'bg-[#16A34A] text-white border-[#16A34A]' },
+  { value: 'HALF_DAY', code: 'H', label: 'H - Half Day (0.5 Day)', color: 'bg-[#F59E0B] text-white border-[#F59E0B]' },
+  { value: 'ABSENT', code: 'L', label: 'L - Leave / Absent', color: 'bg-[#EF4444] text-white border-[#EF4444]' },
+  { value: 'HOLIDAY', code: 'HL', label: 'HL - Official Holiday', color: 'bg-purple-600 text-white border-purple-600' },
+];
+
+export const StatusSelect: React.FC<StatusSelectProps> = ({ value, onChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const activeItem = STATUS_ITEMS.find((item) => item.value === value);
+
+  return (
+    <div className="relative inline-block text-center" ref={containerRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`h-[38px] px-3.5 rounded-[10px] border flex items-center justify-center space-x-1.5 font-bold text-[14px] shadow-xs cursor-pointer transition-all ${
+          activeItem
+            ? activeItem.color
+            : 'bg-[#F8FAFC] text-[#6B7280] border-[#E5E7EB] hover:bg-slate-100'
+        }`}
+        title={activeItem ? activeItem.label : 'Select Status'}
+      >
+        <span>{activeItem ? activeItem.code : '--'}</span>
+        <ChevronDown className="w-3.5 h-3.5 opacity-80 shrink-0" />
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 w-52 bg-white border border-[#E5E7EB] rounded-[12px] shadow-[0_8px_24px_rgba(0,0,0,0.15)] p-1.5 z-50 animate-in fade-in duration-150">
+          {STATUS_ITEMS.map((item) => (
+            <button
+              key={item.value}
+              type="button"
+              onClick={() => {
+                onChange(item.value);
+                setIsOpen(false);
+              }}
+              className={`w-full text-left px-3 py-2 rounded-[8px] text-[13px] font-bold flex items-center space-x-2.5 transition cursor-pointer ${
+                value === item.value
+                  ? 'bg-slate-100 text-[#111827]'
+                  : 'hover:bg-[#F8FAFC] text-[#374151]'
+              }`}
+            >
+              <span className={`w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-bold text-white shrink-0 ${item.color.split(' ')[0]}`}>
+                {item.code}
+              </span>
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 interface DailyAttendanceViewProps {
   selectedYear: number;
@@ -462,7 +534,7 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
                 )}
                 <th className="py-3 px-5 text-center w-28">OT Hours</th>
                 {activeSection === 'employees' && (
-                  <th className="py-3 px-5 text-center w-36">Late Arrival</th>
+                  <th className="py-3 px-5 text-center min-w-[200px]">Late Arrival (Hrs / Mins)</th>
                 )}
               </tr>
             </thead>
@@ -508,26 +580,16 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
 
                       {/* Status Select */}
                       <td className="py-3 px-5 text-center">
-                        <div className="relative">
-                          <select
-                            value={currentStatus}
-                            onChange={(e) => handleStatusChange(emp.id, e.target.value)}
-                            className={`w-full h-[40px] text-[14px] px-3.5 rounded-[10px] border appearance-none cursor-pointer transition-all ${statusStyle(currentStatus)}`}
-                          >
-                            <option value="" className="bg-white text-[#6B7280] font-normal">-- Select Status --</option>
-                            <option value="PRESENT" className="bg-white text-[#16A34A] font-semibold">Present (Full Day)</option>
-                            <option value="HALF_DAY" className="bg-white text-[#F59E0B] font-semibold">Half Day (0.5 Day)</option>
-                            <option value="ABSENT" className="bg-white text-[#EF4444] font-semibold">Leave / Absent</option>
-                            <option value="HOLIDAY" className="bg-white text-purple-600 font-semibold">Official Holiday</option>
-                          </select>
-                          <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-80" />
-                        </div>
+                        <StatusSelect
+                          value={currentStatus}
+                          onChange={(newStatus) => handleStatusChange(emp.id, newStatus)}
+                        />
                       </td>
 
                       {/* Site Multi-Select */}
                       <td className="py-3 px-5 min-w-[280px]">
                         {isAbsentOrHoliday ? (
-                          <span className="text-[14px] text-[#6B7280] italic">N/A ({currentStatus || 'Absent'})</span>
+                          <span className="text-[14px] text-[#6B7280] italic">N/A ({currentStatus === 'HOLIDAY' ? 'HL' : 'L'})</span>
                         ) : (
                           <MultiSiteSelect
                             sites={sites}
@@ -549,8 +611,13 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
                               min="0"
                               max="500"
                               step="1"
-                              value={currentLabourCount}
-                              onChange={(e) => handleLabourCountChange(emp.id, parseInt(e.target.value) || 0)}
+                              placeholder="0"
+                              value={currentLabourCount === 0 ? '' : currentLabourCount}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                handleLabourCountChange(emp.id, val === '' ? 0 : Math.max(0, parseInt(val, 10) || 0));
+                              }}
+                              onFocus={(e) => e.target.select()}
                               title="Number of labours brought by this contractor today"
                               className={`w-20 h-[40px] border text-center font-semibold text-[14px] rounded-[10px] focus:outline-none focus:ring-2 focus:bg-white transition ${
                                 currentLabourCount > 0
@@ -572,38 +639,84 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
                             min="0"
                             max="16"
                             step="0.5"
-                            value={currentOT}
-                            onChange={(e) => handleOTChange(emp.id, parseFloat(e.target.value) || 0)}
-                            className="w-20 h-[40px] bg-[#F8FAFC] border border-[#E5E7EB] text-center font-semibold text-[14px] text-[#111827] rounded-[10px] focus:outline-none focus:ring-2 focus:ring-[#16A34A] focus:bg-white transition"
+                            placeholder="0"
+                            value={currentOT === 0 ? '' : currentOT}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              handleOTChange(emp.id, val === '' ? 0 : Math.max(0, parseFloat(val) || 0));
+                            }}
+                            onFocus={(e) => e.target.select()}
+                            className={`w-20 h-[40px] border text-center font-semibold text-[14px] rounded-[10px] focus:outline-none focus:ring-2 focus:bg-white transition ${
+                              currentOT > 0
+                                ? 'bg-emerald-50 border-emerald-300 text-emerald-700 focus:ring-emerald-400'
+                                : 'bg-[#F8FAFC] border-[#E5E7EB] text-[#111827] focus:ring-[#16A34A]'
+                            }`}
                           />
                         )}
                       </td>
 
-                      {/* Late Minutes — Employees only */}
+                      {/* Late Arrival (Hours & Minutes Selectors) — Employees only */}
                       {activeSection === 'employees' && (
-                        <td className="py-3 px-5 text-center">
+                        <td className="py-3 px-5 text-center min-w-[200px]">
                           {isAbsentOrHoliday ? (
                             <span className="text-[14px] text-[#6B7280]">-</span>
                           ) : (
-                            <div className="relative">
-                              <select
-                                value={currentLateMins}
-                                onChange={(e) => handleLateTimeChange(emp.id, parseInt(e.target.value, 10))}
-                                className={`w-full h-[40px] text-[14px] font-semibold pl-3 pr-7 rounded-[10px] border appearance-none cursor-pointer focus:outline-none ${
-                                  currentLateMins > 0
-                                    ? 'bg-rose-50 text-[#EF4444] border-rose-200'
-                                    : 'bg-[#F8FAFC] text-[#111827] border-[#E5E7EB]'
-                                }`}
-                              >
-                                <option value="0">On Time</option>
-                                <option value="15">15 mins</option>
-                                <option value="30">30 mins</option>
-                                <option value="45">45 mins</option>
-                                <option value="60">1 hour</option>
-                                <option value="90">1.5 hours</option>
-                                <option value="120">2 hours</option>
-                              </select>
-                              <ChevronDown className="w-4 h-4 text-[#6B7280] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                            <div className="flex items-center space-x-1.5 justify-center min-w-[190px]">
+                              {/* Hours Selector */}
+                              <div className="relative flex-1">
+                                <select
+                                  value={Math.floor(currentLateMins / 60)}
+                                  onChange={(e) => {
+                                    const hrs = parseInt(e.target.value, 10);
+                                    const mins = currentLateMins % 60;
+                                    handleLateTimeChange(emp.id, hrs * 60 + mins);
+                                  }}
+                                  className={`w-full h-[40px] text-[13px] font-semibold pl-2.5 pr-6 rounded-[10px] border appearance-none cursor-pointer focus:outline-none transition ${
+                                    currentLateMins > 0
+                                      ? 'bg-rose-50 text-[#EF4444] border-rose-200'
+                                      : 'bg-[#F8FAFC] text-[#111827] border-[#E5E7EB]'
+                                  }`}
+                                  title="Late Hours"
+                                >
+                                  <option value="0">0 hr</option>
+                                  <option value="1">1 hr</option>
+                                  <option value="2">2 hrs</option>
+                                  <option value="3">3 hrs</option>
+                                  <option value="4">4 hrs</option>
+                                  <option value="5">5 hrs</option>
+                                  <option value="6">6 hrs</option>
+                                  <option value="7">7 hrs</option>
+                                  <option value="8">8 hrs</option>
+                                </select>
+                                <ChevronDown className="w-3.5 h-3.5 text-[#6B7280] absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                              </div>
+
+                              {/* Minutes Selector */}
+                              <div className="relative flex-1">
+                                <select
+                                  value={currentLateMins % 60}
+                                  onChange={(e) => {
+                                    const hrs = Math.floor(currentLateMins / 60);
+                                    const mins = parseInt(e.target.value, 10);
+                                    handleLateTimeChange(emp.id, hrs * 60 + mins);
+                                  }}
+                                  className={`w-full h-[40px] text-[13px] font-semibold pl-2.5 pr-6 rounded-[10px] border appearance-none cursor-pointer focus:outline-none transition ${
+                                    currentLateMins > 0
+                                      ? 'bg-rose-50 text-[#EF4444] border-rose-200'
+                                      : 'bg-[#F8FAFC] text-[#111827] border-[#E5E7EB]'
+                                  }`}
+                                  title="Late Minutes"
+                                >
+                                  <option value="0">0 min</option>
+                                  <option value="10">10 mins</option>
+                                  <option value="20">20 mins</option>
+                                  <option value="30">30 mins</option>
+                                  <option value="40">40 mins</option>
+                                  <option value="50">50 mins</option>
+                                  <option value="60">60 mins</option>
+                                </select>
+                                <ChevronDown className="w-3.5 h-3.5 text-[#6B7280] absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                              </div>
                             </div>
                           )}
                         </td>

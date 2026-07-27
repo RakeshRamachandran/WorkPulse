@@ -54,6 +54,7 @@ export default function App() {
 
   const [supabaseConfig, setSupabaseConfig] = useState<SupabaseConfig>(getStoredConfig());
   const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState<boolean>(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
 
   // Unsaved Changes Protection State
   const [hasUnsavedAttendance, setHasUnsavedAttendance] = useState<boolean>(false);
@@ -189,9 +190,14 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#111827] flex selection:bg-emerald-100 selection:text-emerald-900">
+    <div className="min-h-screen bg-[#F8FAFC] text-[#111827] flex flex-col lg:flex-row selection:bg-emerald-100 selection:text-emerald-900">
       {/* Sidebar Navigation */}
-      <Sidebar activeTab={activeTab} setActiveTab={handleTabChange} />
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={handleTabChange}
+        isMobileMenuOpen={isMobileMenuOpen}
+        setIsMobileMenuOpen={setIsMobileMenuOpen}
+      />
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
@@ -212,10 +218,12 @@ export default function App() {
             setIsAuthenticated(false);
           }}
           currentUser={currentUser}
+          isMobileMenuOpen={isMobileMenuOpen}
+          setIsMobileMenuOpen={setIsMobileMenuOpen}
         />
 
         {/* Dynamic View Body */}
-        <main className="flex-1 p-[24px] max-w-[1600px] w-full mx-auto">
+        <main className="flex-1 p-3 sm:p-6 max-w-[1600px] w-full mx-auto">
           {loading ? (
             <div className="flex items-center justify-center py-24 space-x-3 text-[#6B7280]">
               <div className="w-6 h-6 border-2 border-[#16A34A] border-t-transparent rounded-full animate-spin" />

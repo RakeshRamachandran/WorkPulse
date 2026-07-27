@@ -3,9 +3,10 @@ import type { Employee, Site, AttendanceRecord, SupabaseConfig, AppUser } from '
 import { INITIAL_EMPLOYEES, INITIAL_SITES, generateInitialAttendance } from '../data/initialData';
 
 const CONFIG_STORAGE_KEY = 've_supabase_config';
-const LOCAL_EMP_KEY = 've_local_employees';
-const LOCAL_SITES_KEY = 've_local_sites';
-const LOCAL_ATT_KEY = 've_local_attendance';
+
+function isValidUuid(val: any): boolean {
+  return typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+}
 
 export function getStoredConfig(): SupabaseConfig {
   const saved = localStorage.getItem(CONFIG_STORAGE_KEY);
@@ -61,216 +62,193 @@ export function resetSupabaseClient() {
 }
 
 // ----------------------------------------------------
-// UNIFIED DATA SERVICE (SUPABASE WITH LOCALSTORAGE FALLBACK)
+// EXCLUSIVE ONLINE SUPABASE DATA SERVICE
 // ----------------------------------------------------
 
 export class DataService {
-  // Init local storage if empty
-  static initLocalStorage() {
-    if (!localStorage.getItem(LOCAL_EMP_KEY)) {
-      localStorage.setItem(LOCAL_EMP_KEY, JSON.stringify(INITIAL_EMPLOYEES));
-    }
-    if (!localStorage.getItem(LOCAL_SITES_KEY)) {
-      localStorage.setItem(LOCAL_SITES_KEY, JSON.stringify(INITIAL_SITES));
-    }
-    if (!localStorage.getItem(LOCAL_ATT_KEY)) {
-      localStorage.setItem(LOCAL_ATT_KEY, JSON.stringify(generateInitialAttendance()));
-    }
-  }
-
   // --- AUTH & USER LOGIN ---
   static async loginUser(username: string, password: string): Promise<{ success: boolean; user?: AppUser; error?: string }> {
     const cleanUser = username.trim();
     const client = getSupabaseClient();
 
-    if (client) {
-      try {
-        const { data, error } = await client
-          .from('users')
-          .select('*')
-          .eq('username', cleanUser)
-          .eq('password', password)
-          .maybeSingle();
-
-        if (!error && data) {
-          return {
-            success: true,
-            user: {
-              id: data.id,
-              username: data.username,
-              role: data.role as 'Superadmin' | 'Admin',
-            },
-          };
-        }
-      } catch (e) {
-        // Fallback to strict predefined user list
-      }
+    if (!client) {
+      return {
+        success: false,
+        error: 'Database Error: Supabase client is not configured. Please check your VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.',
+      };
     }
 
-    // Pre-configured user accounts strictly required by specification
-    const userDb: Record<string, { pass: string; role: 'Superadmin' | 'Admin' }> = {
-      'venksuperadmin': { pass: '$uper@dmin$34', role: 'Superadmin' },
-      'venkadmin': { pass: '@dmin$321', role: 'Admin' },
-    };
+    try {
+      let { data, error } = await client
+        .from('users')
+        .select('*')
+        .eq('username', cleanUser)
+        .eq('password', password)
+        .maybeSingle();
 
-    const match = userDb[cleanUser];
-    if (match && match.pass === password) {
-      return {
-        success: true,
-        user: {
-          username: cleanUser,
-          role: match.role,
-        },
-      };
+      if (error || !data) {
+        const { count } = await client.from('users').select('*', { count: 'exact', head: true });
+        if (count === 0 || count === null) {
+          await client.from('users').insert([
+            { username: 'venksuperadmin', password: '$uper@dmin$34', role: 'Superadmin' },
+            { username: 'venkadmin', password: '@dmin$321', role: 'Admin' }
+          ]);
+          const retried = await client
+            .from('users')
+            .select('*')
+            .eq('username', cleanUser)
+            .eq('password', password)
+            .maybeSingle();
+          if (retried.data) {
+            data = retried.data;
+            error = null;
+          }
+        }
+      }
+
+      if (!error && data) {
+        return {
+          success: true,
+          user: {
+            id: data.id,
+            username: data.username,
+            role: data.role as 'Superadmin' | 'Admin',
+          },
+        };
+      }
+    } catch (e) {
+      console.error('Online DB authentication error:', e);
     }
 
     return {
       success: false,
-      error: 'Access Denied: Invalid username or password. Only registered accounts can log in.',
+      error: 'Access Denied: Invalid username or password. Only registered online database accounts can log in.',
     };
   }
 
   // --- EMPLOYEES ---
   static async getEmployees(): Promise<Employee[]> {
     const client = getSupabaseClient();
-    if (client) {
-      const { data, error } = await client.from('employees').select('*').order('emp_id');
-      if (!error && data && data.length > 0) {
-        return data as Employee[];
-      }
+    if (!client) {
+      console.error('Supabase client not initialized');
+      return [];
     }
 
-    // Local fallback
-    this.initLocalStorage();
-    const stored = localStorage.getItem(LOCAL_EMP_KEY);
-    return stored ? JSON.parse(stored) : INITIAL_EMPLOYEES;
+    try {
+      const { data, error } = await client.from('employees').select('*').order('emp_id');
+      if (!error && data) {
+        if (data.length > 0) {
+          return data as Employee[];
+        } else {
+          // Auto seed online employees table if empty
+          const payload = INITIAL_EMPLOYEES.map(({ id, ...rest }) => rest);
+          const { data: inserted, error: insertErr } = await client.from('employees').insert(payload).select();
+          if (!insertErr && inserted && inserted.length > 0) {
+            return inserted as Employee[];
+          }
+        }
+      } else if (error) {
+        console.error('Online DB getEmployees error:', error);
+      }
+    } catch (err) {
+      console.error('Online DB getEmployees exception:', err);
+    }
+
+    return [];
   }
 
   static async saveEmployee(employee: Partial<Employee>): Promise<Employee> {
     const client = getSupabaseClient();
-    if (client) {
-      if (employee.id && !employee.id.startsWith('emp-')) {
-        const { data, error } = await client.from('employees').update(employee).eq('id', employee.id).select().single();
-        if (!error && data) return data as Employee;
-      } else {
-        const { id, ...newEmp } = employee;
-        const { data, error } = await client.from('employees').insert([newEmp]).select().single();
-        if (!error && data) return data as Employee;
-      }
+    if (!client) {
+      throw new Error('Supabase online database client is not connected.');
     }
 
-    // Local storage fallback
-    this.initLocalStorage();
-    const employees = await this.getEmployees();
-    let updated: Employee;
-    if (employee.id) {
-      const idx = employees.findIndex(e => e.id === employee.id);
-      if (idx >= 0) {
-        employees[idx] = { ...employees[idx], ...employee } as Employee;
-        updated = employees[idx];
-      } else {
-        updated = { ...employee, id: `emp-${Date.now()}` } as Employee;
-        employees.push(updated);
-      }
+    if (employee.id && isValidUuid(employee.id)) {
+      const { data, error } = await client.from('employees').update(employee).eq('id', employee.id).select().single();
+      if (!error && data) return data as Employee;
+      if (error) throw error;
     } else {
-      updated = {
-        id: `emp-${Date.now()}`,
-        emp_id: employee.emp_id || `E${String(employees.length + 1).padStart(3, '0')}`,
-        name: employee.name || 'New Employee',
-        designation: employee.designation || 'Worker',
-        category: employee.category || 'Worker',
-        is_active: true,
-      };
-      employees.push(updated);
+      const { id, ...newEmp } = employee;
+      const { data, error } = await client.from('employees').insert([newEmp]).select().single();
+      if (!error && data) return data as Employee;
+      if (error) throw error;
     }
 
-    localStorage.setItem(LOCAL_EMP_KEY, JSON.stringify(employees));
-    return updated;
+    throw new Error('Failed to save employee to online database');
+  }
+
+  static async deleteEmployee(empId: string): Promise<boolean> {
+    const client = getSupabaseClient();
+    if (!client) return false;
+
+    if (isValidUuid(empId)) {
+      const { error } = await client.from('employees').delete().eq('id', empId);
+      if (!error) return true;
+      if (error) console.error('Online DB deleteEmployee error:', error);
+    }
+    return false;
   }
 
   // --- SITES ---
   static async getSites(): Promise<Site[]> {
     const client = getSupabaseClient();
-    if (client) {
-      const { data, error } = await client.from('sites').select('*').order('name');
-      if (!error && data && data.length > 0) {
-        return data as Site[];
-      }
+    if (!client) {
+      console.error('Supabase client not initialized');
+      return [];
     }
 
-    this.initLocalStorage();
-    const stored = localStorage.getItem(LOCAL_SITES_KEY);
-    return stored ? JSON.parse(stored) : INITIAL_SITES;
+    try {
+      const { data, error } = await client.from('sites').select('*').order('name');
+      if (!error && data) {
+        if (data.length > 0) {
+          return data as Site[];
+        } else {
+          const payload = INITIAL_SITES.map(({ id, ...rest }) => rest);
+          const { data: inserted, error: insertErr } = await client.from('sites').insert(payload).select();
+          if (!insertErr && inserted && inserted.length > 0) {
+            return inserted as Site[];
+          }
+        }
+      } else if (error) {
+        console.error('Online DB getSites error:', error);
+      }
+    } catch (err) {
+      console.error('Online DB getSites exception:', err);
+    }
+
+    return [];
   }
 
   static async saveSite(site: Partial<Site>): Promise<Site> {
     const client = getSupabaseClient();
-    if (client) {
-      if (site.id && !site.id.startsWith('site-')) {
-        const { data, error } = await client.from('sites').update(site).eq('id', site.id).select().single();
-        if (!error && data) return data as Site;
-      } else {
-        const { id, ...newSite } = site;
-        const { data, error } = await client.from('sites').insert([newSite]).select().single();
-        if (!error && data) return data as Site;
-      }
+    if (!client) {
+      throw new Error('Supabase online database client is not connected.');
     }
 
-    this.initLocalStorage();
-    const sites = await this.getSites();
-    let updated: Site;
-    if (site.id) {
-      const idx = sites.findIndex(s => s.id === site.id);
-      if (idx >= 0) {
-        sites[idx] = { ...sites[idx], ...site } as Site;
-        updated = sites[idx];
-      } else {
-        updated = { ...site, id: `site-${Date.now()}` } as Site;
-        sites.push(updated);
-      }
+    if (site.id && isValidUuid(site.id)) {
+      const { data, error } = await client.from('sites').update(site).eq('id', site.id).select().single();
+      if (!error && data) return data as Site;
+      if (error) throw error;
     } else {
-      updated = {
-        id: `site-${Date.now()}`,
-        name: site.name || 'New Site',
-        code: site.code || '',
-        location: site.location || '',
-        is_active: true,
-      };
-      sites.push(updated);
+      const { id, ...newSite } = site;
+      const { data, error } = await client.from('sites').insert([newSite]).select().single();
+      if (!error && data) return data as Site;
+      if (error) throw error;
     }
 
-    localStorage.setItem(LOCAL_SITES_KEY, JSON.stringify(sites));
-    return updated;
+    throw new Error('Failed to save site to online database');
   }
 
   static async deleteSite(siteId: string): Promise<boolean> {
     const client = getSupabaseClient();
-    if (client && !siteId.startsWith('site-')) {
+    if (!client) return false;
+
+    if (isValidUuid(siteId)) {
       const { error } = await client.from('sites').delete().eq('id', siteId);
       if (!error) return true;
+      if (error) console.error('Online DB deleteSite error:', error);
     }
-
-    this.initLocalStorage();
-    const stored = localStorage.getItem(LOCAL_SITES_KEY);
-    const sites: Site[] = stored ? JSON.parse(stored) : INITIAL_SITES;
-    const filtered = sites.filter((s) => s.id !== siteId);
-    localStorage.setItem(LOCAL_SITES_KEY, JSON.stringify(filtered));
-    return true;
-  }
-
-  static async deleteEmployee(empId: string): Promise<boolean> {
-    const client = getSupabaseClient();
-    if (client && !empId.startsWith('emp-')) {
-      const { error } = await client.from('employees').delete().eq('id', empId);
-      if (!error) return true;
-    }
-
-    this.initLocalStorage();
-    const stored = localStorage.getItem(LOCAL_EMP_KEY);
-    const emps: Employee[] = stored ? JSON.parse(stored) : INITIAL_EMPLOYEES;
-    const filtered = emps.filter((e) => e.id !== empId);
-    localStorage.setItem(LOCAL_EMP_KEY, JSON.stringify(filtered));
-    return true;
+    return false;
   }
 
   // --- ATTENDANCE ---
@@ -279,196 +257,301 @@ export class DataService {
     const lastDay = new Date(year, month, 0).getDate();
     const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
-    // 1. Try Supabase
-    let supabaseRecords: AttendanceRecord[] = [];
     const client = getSupabaseClient();
-    if (client) {
+    if (!client) return [];
+
+    try {
       const { data, error } = await client
         .from('attendance_records')
         .select('*')
         .gte('date', startDate)
         .lte('date', endDate);
+
       if (!error && data && data.length > 0) {
-        supabaseRecords = data as AttendanceRecord[];
+        return (data as AttendanceRecord[]).map((r) => {
+          const site_ids = r.site_ids && Array.isArray(r.site_ids) && r.site_ids.length > 0
+            ? r.site_ids
+            : (r.site_id ? [r.site_id] : []);
+          return {
+            ...r,
+            site_id: site_ids[0] || r.site_id || null,
+            site_ids,
+            ot_hours: Number(r.ot_hours) || 0,
+            late_hours: Number(r.late_hours) || 0,
+            late_minutes: Number(r.late_minutes) || 0,
+            labour_count: Number(r.labour_count) || 0,
+          };
+        });
+      }
+
+      // If zero records for month, auto-seed sample records directly into online DB
+      const dbEmployees = await this.getEmployees();
+      const dbSites = await this.getSites();
+
+      if (dbEmployees.length > 0) {
+        const sampleAttendance: any[] = [];
+
+        dbEmployees.forEach((emp, empIdx) => {
+          for (let day = 1; day <= lastDay; day++) {
+            const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const dateObj = new Date(year, month - 1, day);
+            const isSunday = dateObj.getDay() === 0;
+
+            let status: 'PRESENT' | 'ABSENT' | 'HOLIDAY' = 'PRESENT';
+            if (isSunday) {
+              status = 'HOLIDAY';
+            } else if ((empIdx + day) % 11 === 0) {
+              status = 'ABSENT';
+            }
+
+            const site1 = dbSites.length > 0 ? dbSites[empIdx % dbSites.length] : null;
+            const site2 = dbSites.length > 0 ? dbSites[(empIdx + 2) % dbSites.length] : null;
+            const multiSite = day % 5 === 0;
+
+            const validSiteIds: string[] = [];
+            if (status === 'PRESENT') {
+              if (site1 && isValidUuid(site1.id)) validSiteIds.push(site1.id);
+              if (multiSite && site2 && isValidUuid(site2.id)) validSiteIds.push(site2.id);
+            }
+            const primarySiteUuid = validSiteIds.length > 0 ? validSiteIds[0] : null;
+
+            const otHours = status === 'PRESENT' && (day % 3 === 0) ? 2.5 : 0;
+            const isSubcontractor = emp.designation === 'Subcontractor' || emp.category === 'Subcontractor' || emp.name.startsWith('SUB-');
+            const labourCount = isSubcontractor && status === 'PRESENT' ? 4 + (day % 3) : 0;
+
+            if (isValidUuid(emp.id)) {
+              sampleAttendance.push({
+                employee_id: emp.id,
+                date: dateStr,
+                status,
+                site_id: primarySiteUuid,
+                site_ids: validSiteIds,
+                ot_hours: otHours,
+                late_hours: 0,
+                late_minutes: 0,
+                labour_count: labourCount,
+                remarks: status === 'HOLIDAY' ? 'Sunday Weekly Off' : null,
+                updated_at: new Date().toISOString(),
+              });
+            }
+          }
+        });
+
+        if (sampleAttendance.length > 0) {
+          for (let i = 0; i < sampleAttendance.length; i += 200) {
+            const chunk = sampleAttendance.slice(i, i + 200);
+            await client.from('attendance_records').upsert(chunk, { onConflict: 'employee_id,date' });
+          }
+
+          const { data: reFetched } = await client
+            .from('attendance_records')
+            .select('*')
+            .gte('date', startDate)
+            .lte('date', endDate);
+
+          if (reFetched && reFetched.length > 0) {
+            return (reFetched as AttendanceRecord[]).map((r) => {
+              const site_ids = r.site_ids && Array.isArray(r.site_ids) && r.site_ids.length > 0
+                ? r.site_ids
+                : (r.site_id ? [r.site_id] : []);
+              return {
+                ...r,
+                site_id: site_ids[0] || r.site_id || null,
+                site_ids,
+                ot_hours: Number(r.ot_hours) || 0,
+                late_hours: Number(r.late_hours) || 0,
+                late_minutes: Number(r.late_minutes) || 0,
+                labour_count: Number(r.labour_count) || 0,
+              };
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Online DB getAttendanceForMonth error:', err);
+    }
+
+    return [];
+  }
+
+  private static async resolveRecordUuids(record: Partial<AttendanceRecord>): Promise<{
+    employee_id: string | null;
+    site_id: string | null;
+    site_ids: string[];
+  }> {
+    const employees = await this.getEmployees();
+    const sites = await this.getSites();
+
+    let empUuid: string | null = null;
+    if (record.employee_id) {
+      if (isValidUuid(record.employee_id)) {
+        empUuid = record.employee_id;
+      } else {
+        const empMatch = employees.find(
+          (e) => e.id === record.employee_id || e.emp_id === record.employee_id
+        );
+        if (empMatch && isValidUuid(empMatch.id)) {
+          empUuid = empMatch.id;
+        }
       }
     }
 
-    // 2. Always read localStorage (it is the always-written-to ground truth)
-    this.initLocalStorage();
-    const stored = localStorage.getItem(LOCAL_ATT_KEY);
-    const allLocal: AttendanceRecord[] = stored ? JSON.parse(stored) : generateInitialAttendance();
-    const localRecords = allLocal.filter(r => r.date >= startDate && r.date <= endDate);
+    const rawSiteIds = record.site_ids && Array.isArray(record.site_ids)
+      ? record.site_ids
+      : (record.site_id ? [record.site_id] : []);
 
-    // 3. Merge: start with Supabase, then overlay localStorage records (they are always fresher
-    //    because every save writes to localStorage, even when Supabase upsert fails).
-    const merged = new Map<string, AttendanceRecord>();
-    supabaseRecords.forEach(r => merged.set(`${r.employee_id}_${r.date}`, r));
-    localRecords.forEach(r => merged.set(`${r.employee_id}_${r.date}`, r));
-    const resultRecords = Array.from(merged.values());
-
-    // 4. Normalize site_ids and site_id on all returned records
-    return resultRecords.map((r) => {
-      const site_ids = r.site_ids && Array.isArray(r.site_ids) && r.site_ids.length > 0
-        ? r.site_ids
-        : (r.site_id ? [r.site_id] : []);
-      const primary_site_id = site_ids.length > 0 ? site_ids[0] : (r.site_id || null);
-      return {
-        ...r,
-        site_id: primary_site_id,
-        site_ids,
-      };
+    const resolvedSiteIds: string[] = [];
+    rawSiteIds.forEach((sId) => {
+      if (isValidUuid(sId)) {
+        resolvedSiteIds.push(sId);
+      } else {
+        const siteMatch = sites.find((s) => s.id === sId || s.code === sId || s.name === sId);
+        if (siteMatch && isValidUuid(siteMatch.id)) {
+          resolvedSiteIds.push(siteMatch.id);
+        }
+      }
     });
+
+    const primarySiteUuid = resolvedSiteIds.length > 0 ? resolvedSiteIds[0] : null;
+
+    return {
+      employee_id: empUuid,
+      site_id: primarySiteUuid,
+      site_ids: resolvedSiteIds,
+    };
   }
 
   static async saveAttendanceRecord(record: Partial<AttendanceRecord>): Promise<AttendanceRecord> {
     const client = getSupabaseClient();
-    let savedRecord: AttendanceRecord | null = null;
+    if (!client) {
+      throw new Error('Supabase online database client is not connected.');
+    }
 
-    const site_ids = record.site_ids && Array.isArray(record.site_ids)
-      ? record.site_ids
-      : (record.site_id ? [record.site_id] : []);
-    const primary_site_id = site_ids.length > 0 ? site_ids[0] : (record.site_id || null);
+    const { employee_id: resolvedEmpId, site_id: primarySiteUuid, site_ids: resolvedSiteIds } =
+      await this.resolveRecordUuids(record);
 
     const recordToSave = {
       ...record,
-      site_id: primary_site_id,
-      site_ids,
+      employee_id: resolvedEmpId || record.employee_id,
+      site_id: primarySiteUuid,
+      site_ids: resolvedSiteIds,
+      ot_hours: Number(record.ot_hours) || 0,
+      late_hours: Number(record.late_hours) || 0,
+      late_minutes: Number(record.late_minutes) || 0,
+      labour_count: Number(record.labour_count) || 0,
+      remarks: record.remarks || null,
     };
 
-    if (client && recordToSave.employee_id && recordToSave.date) {
+    if (recordToSave.employee_id && isValidUuid(recordToSave.employee_id) && recordToSave.date) {
       const { data, error } = await client
         .from('attendance_records')
         .upsert([{
           employee_id: recordToSave.employee_id,
           date: recordToSave.date,
           status: recordToSave.status || 'PRESENT',
-          site_id: primary_site_id,
-          site_ids: site_ids,
-          ot_hours: recordToSave.ot_hours || 0,
-          late_hours: recordToSave.late_hours || 0,
-          late_minutes: recordToSave.late_minutes || 0,
-          labour_count: recordToSave.labour_count || 0,
-          remarks: recordToSave.remarks || null,
+          site_id: recordToSave.site_id,
+          site_ids: recordToSave.site_ids,
+          ot_hours: recordToSave.ot_hours,
+          late_hours: recordToSave.late_hours,
+          late_minutes: recordToSave.late_minutes,
+          labour_count: recordToSave.labour_count,
+          remarks: recordToSave.remarks,
           updated_at: new Date().toISOString(),
         }], { onConflict: 'employee_id,date' })
         .select()
         .single();
 
       if (!error && data) {
-        savedRecord = { ...data, site_ids } as AttendanceRecord;
+        return {
+          ...data,
+          site_ids: resolvedSiteIds,
+          ot_hours: Number(data.ot_hours) || 0,
+          late_hours: Number(data.late_hours) || 0,
+          late_minutes: Number(data.late_minutes) || 0,
+          labour_count: Number(data.labour_count) || 0,
+        } as AttendanceRecord;
+      }
+
+      if (error) {
+        console.error('Online DB saveAttendanceRecord error:', error);
+        throw error;
       }
     }
 
-    // Always update local storage too as single source of truth for fast render!
-    this.initLocalStorage();
-    const stored = localStorage.getItem(LOCAL_ATT_KEY);
-    const records: AttendanceRecord[] = stored ? JSON.parse(stored) : generateInitialAttendance();
-
-    const existingIdx = records.findIndex(
-      r => r.employee_id === recordToSave.employee_id && r.date === recordToSave.date
-    );
-
-    if (existingIdx >= 0) {
-      records[existingIdx] = { ...records[existingIdx], ...recordToSave } as AttendanceRecord;
-      if (!savedRecord) savedRecord = records[existingIdx];
-    } else {
-      const newRec: AttendanceRecord = {
-        id: recordToSave.id || `att-${recordToSave.employee_id}-${recordToSave.date}`,
-        employee_id: recordToSave.employee_id!,
-        date: recordToSave.date!,
-        status: recordToSave.status || 'PRESENT',
-        site_id: primary_site_id,
-        site_ids: site_ids,
-        ot_hours: recordToSave.ot_hours || 0,
-        late_hours: recordToSave.late_hours || 0,
-        late_minutes: recordToSave.late_minutes || 0,
-        labour_count: recordToSave.labour_count || 0,
-        remarks: recordToSave.remarks,
-      };
-      records.push(newRec);
-      if (!savedRecord) savedRecord = newRec;
-    }
-
-    localStorage.setItem(LOCAL_ATT_KEY, JSON.stringify(records));
-    return savedRecord;
+    throw new Error('Invalid employee UUID or missing date for online database attendance save');
   }
 
   static async bulkSaveAttendance(records: Partial<AttendanceRecord>[]): Promise<void> {
     const client = getSupabaseClient();
-    if (client && records.length > 0) {
+    if (!client) {
+      throw new Error('Supabase online database client is not connected.');
+    }
+
+    if (records.length > 0) {
+      const employees = await this.getEmployees();
+      const sites = await this.getSites();
+
       const payload = records.map((r) => {
-        const sIds = r.site_ids && Array.isArray(r.site_ids)
+        let empUuid: string | null = null;
+        if (r.employee_id) {
+          if (isValidUuid(r.employee_id)) {
+            empUuid = r.employee_id;
+          } else {
+            const empMatch = employees.find(e => e.id === r.employee_id || e.emp_id === r.employee_id);
+            if (empMatch && isValidUuid(empMatch.id)) empUuid = empMatch.id;
+          }
+        }
+
+        const rawSiteIds = r.site_ids && Array.isArray(r.site_ids)
           ? r.site_ids
           : (r.site_id ? [r.site_id] : []);
+
+        const resolvedSiteIds: string[] = [];
+        rawSiteIds.forEach((sId) => {
+          if (isValidUuid(sId)) {
+            resolvedSiteIds.push(sId);
+          } else {
+            const siteMatch = sites.find(s => s.id === sId || s.code === sId || s.name === sId);
+            if (siteMatch && isValidUuid(siteMatch.id)) resolvedSiteIds.push(siteMatch.id);
+          }
+        });
+
         return {
-          employee_id: r.employee_id,
+          employee_id: empUuid || r.employee_id,
           date: r.date,
           status: r.status || 'PRESENT',
-          site_id: sIds[0] || null,
-          site_ids: sIds,
-          ot_hours: r.ot_hours || 0,
-          late_hours: r.late_hours || 0,
-          late_minutes: r.late_minutes || 0,
-          labour_count: r.labour_count || 0,
+          site_id: resolvedSiteIds.length > 0 ? resolvedSiteIds[0] : null,
+          site_ids: resolvedSiteIds,
+          ot_hours: Number(r.ot_hours) || 0,
+          late_hours: Number(r.late_hours) || 0,
+          late_minutes: Number(r.late_minutes) || 0,
+          labour_count: Number(r.labour_count) || 0,
           remarks: r.remarks || null,
           updated_at: new Date().toISOString(),
         };
-      });
+      }).filter(r => isValidUuid(r.employee_id) && r.date);
 
-      const { error } = await client
-        .from('attendance_records')
-        .upsert(payload, { onConflict: 'employee_id,date' });
+      if (payload.length > 0) {
+        const { error } = await client
+          .from('attendance_records')
+          .upsert(payload, { onConflict: 'employee_id,date' });
 
-      if (error) {
-        console.error('Supabase bulk save notice:', error);
+        if (error) {
+          console.error('Online DB bulkSaveAttendance error:', error);
+          throw error;
+        }
       }
     }
-
-    // Always update local storage too!
-    this.initLocalStorage();
-    const stored = localStorage.getItem(LOCAL_ATT_KEY);
-    const existingRecords: AttendanceRecord[] = stored ? JSON.parse(stored) : generateInitialAttendance();
-
-    records.forEach((rec) => {
-      const sIds = rec.site_ids && Array.isArray(rec.site_ids)
-        ? rec.site_ids
-        : (rec.site_id ? [rec.site_id] : []);
-      const primary_site_id = sIds[0] || null;
-
-      const normalizedRec = {
-        ...rec,
-        site_id: primary_site_id,
-        site_ids: sIds,
-      };
-
-      const idx = existingRecords.findIndex(
-        (r) => r.employee_id === rec.employee_id && r.date === rec.date
-      );
-      if (idx >= 0) {
-        existingRecords[idx] = { ...existingRecords[idx], ...normalizedRec } as AttendanceRecord;
-      } else {
-        existingRecords.push({
-          id: `att-${rec.employee_id}-${rec.date}`,
-          employee_id: rec.employee_id!,
-          date: rec.date!,
-          status: rec.status || 'PRESENT',
-          site_id: primary_site_id,
-          site_ids: sIds,
-          ot_hours: rec.ot_hours || 0,
-          late_hours: rec.late_hours || 0,
-          late_minutes: rec.late_minutes || 0,
-          labour_count: rec.labour_count || 0,
-          remarks: rec.remarks,
-        });
-      }
-    });
-
-    localStorage.setItem(LOCAL_ATT_KEY, JSON.stringify(existingRecords));
   }
 
   static async resetToSampleData(): Promise<void> {
-    localStorage.setItem(LOCAL_EMP_KEY, JSON.stringify(INITIAL_EMPLOYEES));
-    localStorage.setItem(LOCAL_SITES_KEY, JSON.stringify(INITIAL_SITES));
-    localStorage.setItem(LOCAL_ATT_KEY, JSON.stringify(generateInitialAttendance()));
+    const client = getSupabaseClient();
+    if (client) {
+      const sitePayload = INITIAL_SITES.map(({ id, ...rest }) => rest);
+      const empPayload = INITIAL_EMPLOYEES.map(({ id, ...rest }) => rest);
+
+      await client.from('sites').upsert(sitePayload, { onConflict: 'name' });
+      await client.from('employees').upsert(empPayload, { onConflict: 'emp_id' });
+    }
   }
 }

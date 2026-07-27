@@ -43,32 +43,55 @@ CREATE TABLE IF NOT EXISTS public.attendance_records (
     CONSTRAINT unique_emp_date UNIQUE (employee_id, date)
 );
 
+-- MIGRATION STATEMENTS: ADD MISSING COLUMNS IF TABLES ALREADY EXIST ONLINE
+ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS site_ids TEXT[] DEFAULT '{}';
+ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS ot_hours NUMERIC(4, 2) NOT NULL DEFAULT 0.0;
+ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS late_hours INT NOT NULL DEFAULT 0;
+ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS late_minutes INT NOT NULL DEFAULT 0;
+ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS labour_count INT NOT NULL DEFAULT 0;
+ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS remarks TEXT;
+
+-- 4. USERS TABLE
+CREATE TABLE IF NOT EXISTS public.users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    username TEXT NOT NULL UNIQUE,
+    password TEXT NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('Superadmin', 'Admin')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- INDEXES FOR FAST QUERYING
 CREATE INDEX IF NOT EXISTS idx_attendance_date ON public.attendance_records(date);
 CREATE INDEX IF NOT EXISTS idx_attendance_employee ON public.attendance_records(employee_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_site ON public.attendance_records(site_id);
+CREATE INDEX IF NOT EXISTS idx_users_username ON public.users(username);
 
 -- ENABLE ROW LEVEL SECURITY (RLS)
 ALTER TABLE public.employees ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sites ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.attendance_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 
 -- POLICIES FOR PUBLIC ANON ACCESS (Row Level Security Policies)
 DROP POLICY IF EXISTS "Allow public read employees" ON public.employees;
 DROP POLICY IF EXISTS "Allow public insert employees" ON public.employees;
 DROP POLICY IF EXISTS "Allow public update employees" ON public.employees;
+DROP POLICY IF EXISTS "Allow public delete employees" ON public.employees;
 
 CREATE POLICY "Allow public read employees" ON public.employees FOR SELECT USING (true);
 CREATE POLICY "Allow public insert employees" ON public.employees FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public update employees" ON public.employees FOR UPDATE USING (true);
+CREATE POLICY "Allow public delete employees" ON public.employees FOR DELETE USING (true);
 
 DROP POLICY IF EXISTS "Allow public read sites" ON public.sites;
 DROP POLICY IF EXISTS "Allow public insert sites" ON public.sites;
 DROP POLICY IF EXISTS "Allow public update sites" ON public.sites;
+DROP POLICY IF EXISTS "Allow public delete sites" ON public.sites;
 
 CREATE POLICY "Allow public read sites" ON public.sites FOR SELECT USING (true);
 CREATE POLICY "Allow public insert sites" ON public.sites FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public update sites" ON public.sites FOR UPDATE USING (true);
+CREATE POLICY "Allow public delete sites" ON public.sites FOR DELETE USING (true);
 
 DROP POLICY IF EXISTS "Allow public read attendance" ON public.attendance_records;
 DROP POLICY IF EXISTS "Allow public insert attendance" ON public.attendance_records;
@@ -79,6 +102,20 @@ CREATE POLICY "Allow public read attendance" ON public.attendance_records FOR SE
 CREATE POLICY "Allow public insert attendance" ON public.attendance_records FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public update attendance" ON public.attendance_records FOR UPDATE USING (true);
 CREATE POLICY "Allow public delete attendance" ON public.attendance_records FOR DELETE USING (true);
+
+DROP POLICY IF EXISTS "Allow public read users" ON public.users;
+DROP POLICY IF EXISTS "Allow public insert users" ON public.users;
+DROP POLICY IF EXISTS "Allow public update users" ON public.users;
+
+CREATE POLICY "Allow public read users" ON public.users FOR SELECT USING (true);
+CREATE POLICY "Allow public insert users" ON public.users FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update users" ON public.users FOR UPDATE USING (true);
+
+-- SEED USERS DATA
+INSERT INTO public.users (username, password, role) VALUES
+('venksuperadmin', '$uper@dmin$34', 'Superadmin'),
+('venkadmin', '@dmin$321', 'Admin')
+ON CONFLICT (username) DO NOTHING;
 
 -- SEED SITES DATA
 INSERT INTO public.sites (name, code, location) VALUES
@@ -155,3 +192,4 @@ INSERT INTO public.employees (emp_id, name, designation, category) VALUES
 ('E054', 'SUB-ANOOP B', 'Subcontractor', 'Worker'),
 ('E055', 'SUB- BHUVANACHANDRAN', 'Subcontractor', 'Worker')
 ON CONFLICT (emp_id) DO NOTHING;
+
