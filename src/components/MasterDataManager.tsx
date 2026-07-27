@@ -24,9 +24,13 @@ export const MasterDataManager: React.FC<MasterDataManagerProps> = ({
   // Delete Confirmation State
   const [deletingEmpId, setDeletingEmpId] = useState<string | null>(null);
 
-  // Separate employees into Direct Staff and Subcontractors
-  const directEmployees = employees.filter((e) => !isSubcontractor(e));
-  const subcontractors = employees.filter((e) => isSubcontractor(e));
+  // Separate employees into Direct Staff and Subcontractors (sorted alphabetically by name)
+  const directEmployees = employees
+    .filter((e) => !isSubcontractor(e))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const subcontractors = employees
+    .filter((e) => isSubcontractor(e))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   const handleOpenModal = (isSub: boolean, emp?: Employee) => {
     if (emp) {

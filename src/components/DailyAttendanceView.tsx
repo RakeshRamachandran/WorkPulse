@@ -323,19 +323,21 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
   // Current pool based on active tab
   const currentPool = activeSection === 'employees' ? regularEmployees : contractors;
 
-  // Visible (filtered) employees in current tab
-  const visibleEmployees = currentPool.filter((emp) => {
-    const matchesSearch =
-      emp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      emp.emp_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      emp.designation.toLowerCase().includes(searchQuery.toLowerCase());
+  // Visible (filtered) employees in current tab (sorted alphabetically by name)
+  const visibleEmployees = currentPool
+    .filter((emp) => {
+      const matchesSearch =
+        emp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        emp.emp_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        emp.designation.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesCategory = filterCategory === 'ALL' || emp.category === filterCategory;
-    const draftSiteIds = getRecordSiteIds(draftRecords[emp.id]);
-    const matchesSite = filterSiteId === 'ALL' || draftSiteIds.includes(filterSiteId);
+      const matchesCategory = filterCategory === 'ALL' || emp.category === filterCategory;
+      const draftSiteIds = getRecordSiteIds(draftRecords[emp.id]);
+      const matchesSite = filterSiteId === 'ALL' || draftSiteIds.includes(filterSiteId);
 
-    return matchesSearch && matchesCategory && matchesSite;
-  });
+      return matchesSearch && matchesCategory && matchesSite;
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   // Stats are computed for direct employees
   const directRecords = regularEmployees.map((emp) => draftRecords[emp.id]).filter(Boolean);

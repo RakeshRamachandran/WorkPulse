@@ -104,14 +104,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     };
   });
 
-  // Filtered summaries
-  const filteredSummaries = summaries.filter((s) => {
-    const matchesSearch =
-      s.employee.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.employee.emp_id.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = categoryFilter === 'ALL' || s.employee.category === categoryFilter;
-    return matchesSearch && matchesCategory;
-  });
+  // Filtered summaries (sorted alphabetically by employee name)
+  const filteredSummaries = summaries
+    .filter((s) => {
+      const matchesSearch =
+        s.employee.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.employee.emp_id.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory = categoryFilter === 'ALL' || s.employee.category === categoryFilter;
+      return matchesSearch && matchesCategory;
+    })
+    .sort((a, b) => a.employee.name.localeCompare(b.employee.name));
 
   const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
   const monthShortName = new Date(selectedYear, selectedMonth - 1, 1).toLocaleDateString('en-US', {

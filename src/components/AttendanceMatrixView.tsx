@@ -68,7 +68,8 @@ export const AttendanceMatrixView: React.FC<AttendanceMatrixViewProps> = ({
         emp.emp_id.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCategory = categoryFilter === 'ALL' || emp.category === categoryFilter;
       return matchesSearch && matchesCategory;
-    });
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <div className="space-y-[24px]">
