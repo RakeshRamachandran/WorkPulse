@@ -1,6 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { Employee, Site, AttendanceRecord, SupabaseConfig, AppUser } from '../types';
-import { INITIAL_EMPLOYEES, INITIAL_SITES, generateInitialAttendance } from '../data/initialData';
+import { INITIAL_EMPLOYEES, INITIAL_SITES } from '../data/initialData';
 
 const CONFIG_STORAGE_KEY = 've_supabase_config';
 
@@ -267,7 +267,7 @@ export class DataService {
         .gte('date', startDate)
         .lte('date', endDate);
 
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         return (data as AttendanceRecord[]).map((r) => {
           const site_ids = r.site_ids && Array.isArray(r.site_ids) && r.site_ids.length > 0
             ? r.site_ids
@@ -282,90 +282,8 @@ export class DataService {
             labour_count: Number(r.labour_count) || 0,
           };
         });
-      }
-
-      // If zero records for month, auto-seed sample records directly into online DB
-      const dbEmployees = await this.getEmployees();
-      const dbSites = await this.getSites();
-
-      if (dbEmployees.length > 0) {
-        const sampleAttendance: any[] = [];
-
-        dbEmployees.forEach((emp, empIdx) => {
-          for (let day = 1; day <= lastDay; day++) {
-            const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            const dateObj = new Date(year, month - 1, day);
-            const isSunday = dateObj.getDay() === 0;
-
-            let status: 'PRESENT' | 'ABSENT' | 'HOLIDAY' = 'PRESENT';
-            if (isSunday) {
-              status = 'HOLIDAY';
-            } else if ((empIdx + day) % 11 === 0) {
-              status = 'ABSENT';
-            }
-
-            const site1 = dbSites.length > 0 ? dbSites[empIdx % dbSites.length] : null;
-            const site2 = dbSites.length > 0 ? dbSites[(empIdx + 2) % dbSites.length] : null;
-            const multiSite = day % 5 === 0;
-
-            const validSiteIds: string[] = [];
-            if (status === 'PRESENT') {
-              if (site1 && isValidUuid(site1.id)) validSiteIds.push(site1.id);
-              if (multiSite && site2 && isValidUuid(site2.id)) validSiteIds.push(site2.id);
-            }
-            const primarySiteUuid = validSiteIds.length > 0 ? validSiteIds[0] : null;
-
-            const otHours = status === 'PRESENT' && (day % 3 === 0) ? 2.5 : 0;
-            const isSubcontractor = emp.designation === 'Subcontractor' || emp.category === 'Subcontractor' || emp.name.startsWith('SUB-');
-            const labourCount = isSubcontractor && status === 'PRESENT' ? 4 + (day % 3) : 0;
-
-            if (isValidUuid(emp.id)) {
-              sampleAttendance.push({
-                employee_id: emp.id,
-                date: dateStr,
-                status,
-                site_id: primarySiteUuid,
-                site_ids: validSiteIds,
-                ot_hours: otHours,
-                late_hours: 0,
-                late_minutes: 0,
-                labour_count: labourCount,
-                remarks: status === 'HOLIDAY' ? 'Sunday Weekly Off' : null,
-                updated_at: new Date().toISOString(),
-              });
-            }
-          }
-        });
-
-        if (sampleAttendance.length > 0) {
-          for (let i = 0; i < sampleAttendance.length; i += 200) {
-            const chunk = sampleAttendance.slice(i, i + 200);
-            await client.from('attendance_records').upsert(chunk, { onConflict: 'employee_id,date' });
-          }
-
-          const { data: reFetched } = await client
-            .from('attendance_records')
-            .select('*')
-            .gte('date', startDate)
-            .lte('date', endDate);
-
-          if (reFetched && reFetched.length > 0) {
-            return (reFetched as AttendanceRecord[]).map((r) => {
-              const site_ids = r.site_ids && Array.isArray(r.site_ids) && r.site_ids.length > 0
-                ? r.site_ids
-                : (r.site_id ? [r.site_id] : []);
-              return {
-                ...r,
-                site_id: site_ids[0] || r.site_id || null,
-                site_ids,
-                ot_hours: Number(r.ot_hours) || 0,
-                late_hours: Number(r.late_hours) || 0,
-                late_minutes: Number(r.late_minutes) || 0,
-                labour_count: Number(r.labour_count) || 0,
-              };
-            });
-          }
-        }
+      } else if (error) {
+        console.error('Online DB getAttendanceForMonth error:', error);
       }
     } catch (err) {
       console.error('Online DB getAttendanceForMonth error:', err);

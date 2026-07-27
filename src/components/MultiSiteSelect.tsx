@@ -20,6 +20,7 @@ export const MultiSiteSelect: React.FC<MultiSiteSelectProps> = ({
   className = '',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [dropUp, setDropUp] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -33,6 +34,20 @@ export const MultiSiteSelect: React.FC<MultiSiteSelectProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const handleToggle = () => {
+    if (disabled) return;
+    if (!isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      if (spaceBelow < 280 && rect.top > 250) {
+        setDropUp(true);
+      } else {
+        setDropUp(false);
+      }
+    }
+    setIsOpen(!isOpen);
+  };
 
   const filteredSites = sites.filter((site) => {
     const q = searchQuery.toLowerCase();
@@ -66,10 +81,10 @@ export const MultiSiteSelect: React.FC<MultiSiteSelectProps> = ({
   };
 
   return (
-    <div className={`relative ${className}`} ref={containerRef}>
+    <div className={`relative ${className} ${isOpen ? 'z-50' : 'z-10'}`} ref={containerRef}>
       {/* Trigger Button / Display Box */}
       <div
-        onClick={() => !disabled && setIsOpen(!isOpen)}
+        onClick={handleToggle}
         className={`min-h-[40px] w-full bg-[#F8FAFC] border border-[#E5E7EB] rounded-[10px] px-3 py-1.5 flex items-center justify-between gap-2 cursor-pointer transition-all duration-150 ${
           isOpen ? 'ring-2 ring-[#16A34A] bg-white border-[#16A34A]' : 'hover:bg-white hover:border-gray-300'
         } ${disabled ? 'opacity-50 cursor-not-allowed bg-gray-100' : ''}`}
@@ -115,7 +130,9 @@ export const MultiSiteSelect: React.FC<MultiSiteSelectProps> = ({
 
       {/* Popover Dropdown Panel */}
       {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-1.5 bg-white border border-[#E5E7EB] rounded-[12px] shadow-[0_10px_25px_rgba(0,0,0,0.12)] z-50 p-2 min-w-[280px] animate-fade-in">
+        <div className={`absolute left-0 right-0 bg-white border border-[#E5E7EB] rounded-[12px] shadow-[0_10px_25px_rgba(0,0,0,0.15)] z-50 p-2 min-w-[280px] animate-fade-in ${
+          dropUp ? 'bottom-full mb-1.5 origin-bottom' : 'top-full mt-1.5 origin-top'
+        }`}>
           {/* Search Header */}
           <div className="relative mb-2">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#6B7280]" />

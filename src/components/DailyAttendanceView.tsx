@@ -35,6 +35,7 @@ const STATUS_ITEMS = [
 
 export const StatusSelect: React.FC<StatusSelectProps> = ({ value, onChange }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [dropUp, setDropUp] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -47,13 +48,26 @@ export const StatusSelect: React.FC<StatusSelectProps> = ({ value, onChange }) =
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const handleToggle = () => {
+    if (!isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      if (spaceBelow < 220 && rect.top > 200) {
+        setDropUp(true);
+      } else {
+        setDropUp(false);
+      }
+    }
+    setIsOpen(!isOpen);
+  };
+
   const activeItem = STATUS_ITEMS.find((item) => item.value === value);
 
   return (
-    <div className="relative inline-block text-center" ref={containerRef}>
+    <div className={`relative inline-block text-center ${isOpen ? 'z-50' : 'z-10'}`} ref={containerRef}>
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleToggle}
         className={`h-[38px] px-3.5 rounded-[10px] border flex items-center justify-center space-x-1.5 font-bold text-[14px] shadow-xs cursor-pointer transition-all ${
           activeItem
             ? activeItem.color
@@ -62,11 +76,15 @@ export const StatusSelect: React.FC<StatusSelectProps> = ({ value, onChange }) =
         title={activeItem ? activeItem.label : 'Select Status'}
       >
         <span>{activeItem ? activeItem.code : '--'}</span>
-        <ChevronDown className="w-3.5 h-3.5 opacity-80 shrink-0" />
+        <ChevronDown className={`w-3.5 h-3.5 opacity-80 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {isOpen && (
-        <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 w-52 bg-white border border-[#E5E7EB] rounded-[12px] shadow-[0_8px_24px_rgba(0,0,0,0.15)] p-1.5 z-50 animate-in fade-in duration-150">
+        <div
+          className={`absolute left-1/2 -translate-x-1/2 w-52 bg-white border border-[#E5E7EB] rounded-[12px] shadow-[0_8px_24px_rgba(0,0,0,0.18)] p-1.5 z-50 animate-in fade-in duration-150 ${
+            dropUp ? 'bottom-full mb-1.5 origin-bottom' : 'top-full mt-1.5 origin-top'
+          }`}
+        >
           {STATUS_ITEMS.map((item) => (
             <button
               key={item.value}
@@ -428,8 +446,8 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
       </div>
 
       {/* Section Tabs: Employees / Contractors */}
-      <div className="bg-white border border-[#E5E7EB] rounded-[14px] shadow-[0_2px_8px_rgba(0,0,0,0.05)] overflow-hidden">
-        <div className="flex border-b border-[#E5E7EB]">
+      <div className="bg-white border border-[#E5E7EB] rounded-[14px] shadow-[0_2px_8px_rgba(0,0,0,0.05)]">
+        <div className="flex border-b border-[#E5E7EB] rounded-t-[14px] overflow-hidden">
           <button
             onClick={() => { setActiveSection('employees'); setSearchQuery(''); setFilterCategory('ALL'); setFilterSiteId('ALL'); }}
             className={`flex-1 flex items-center justify-center space-x-2.5 py-3.5 text-[14px] font-semibold transition-all duration-150 border-b-2 ${
@@ -520,7 +538,7 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
         </div>
 
         {/* Main Table */}
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto min-h-[380px] pb-28">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-[#FAFAFA] text-[13px] uppercase tracking-wider text-[#6B7280] font-semibold border-b border-[#E5E7EB] h-[48px]">
