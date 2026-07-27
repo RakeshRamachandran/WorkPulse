@@ -44,6 +44,17 @@ export function getRecordSiteIds(record?: Partial<AttendanceRecord> | null): str
   return [];
 }
 
+export function isSubcontractor(emp?: Partial<Employee> | null): boolean {
+  if (!emp) return false;
+  return (
+    emp.designation === 'Subcontractor' ||
+    emp.category === 'Subcontractor' ||
+    Boolean(emp.name && emp.name.toUpperCase().startsWith('SUB-')) ||
+    Boolean(emp.emp_id && emp.emp_id.toUpperCase().startsWith('SUB-'))
+  );
+}
+
+
 export interface MonthlyEmployeeSummary {
   employee: Employee;
   workingDays: number;

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { Employee } from '../types';
+import { isSubcontractor } from '../types';
 import { Users, Plus, Edit2, Trash2, X, Save, AlertTriangle, HardHat, CheckCircle2 } from 'lucide-react';
 import { DataService } from '../lib/supabaseClient';
 
@@ -24,12 +25,6 @@ export const MasterDataManager: React.FC<MasterDataManagerProps> = ({
   const [deletingEmpId, setDeletingEmpId] = useState<string | null>(null);
 
   // Separate employees into Direct Staff and Subcontractors
-  const isSubcontractor = (emp: Employee) =>
-    emp.designation === 'Subcontractor' ||
-    emp.category === 'Subcontractor' ||
-    emp.name.toUpperCase().startsWith('SUB-') ||
-    emp.emp_id.toUpperCase().startsWith('SUB-');
-
   const directEmployees = employees.filter((e) => !isSubcontractor(e));
   const subcontractors = employees.filter((e) => isSubcontractor(e));
 

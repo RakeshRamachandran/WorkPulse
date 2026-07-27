@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { Employee, Site, AttendanceRecord } from '../types';
-import { getRecordSiteIds } from '../types';
+import { getRecordSiteIds, isSubcontractor } from '../types';
 import { Search, Filter, Calendar, Info } from 'lucide-react';
 
 interface AttendanceMatrixViewProps {
@@ -60,13 +60,15 @@ export const AttendanceMatrixView: React.FC<AttendanceMatrixViewProps> = ({
     }
   });
 
-  const filteredEmployees = employees.filter((emp) => {
-    const matchesSearch =
-      emp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      emp.emp_id.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = categoryFilter === 'ALL' || emp.category === categoryFilter;
-    return matchesSearch && matchesCategory;
-  });
+  const filteredEmployees = employees
+    .filter((emp) => !isSubcontractor(emp))
+    .filter((emp) => {
+      const matchesSearch =
+        emp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        emp.emp_id.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory = categoryFilter === 'ALL' || emp.category === categoryFilter;
+      return matchesSearch && matchesCategory;
+    });
 
   return (
     <div className="space-y-[24px]">

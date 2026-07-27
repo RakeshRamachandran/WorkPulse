@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { Employee, Site, AttendanceRecord, MonthlyEmployeeSummary } from '../types';
-import { getRecordSiteIds } from '../types';
+import { getRecordSiteIds, isSubcontractor } from '../types';
 import {
   Users,
   Briefcase,
@@ -44,8 +44,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const siteMap = new Map<string, Site>();
   sites.forEach((s) => siteMap.set(s.id, s));
 
-  // Compute monthly employee summaries
-  const summaries: MonthlyEmployeeSummary[] = employees.map((emp) => {
+  // Compute monthly employee summaries (direct employees only)
+  const summaries: MonthlyEmployeeSummary[] = employees
+    .filter((emp) => !isSubcontractor(emp))
+    .map((emp) => {
     const empRecords = attendanceRecords.filter((r) => r.employee_id === emp.id);
 
     let workingDays = 0;

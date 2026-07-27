@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { Employee, Site, AttendanceRecord, AttendanceStatus } from '../types';
-import { getRecordSiteIds } from '../types';
+import { getRecordSiteIds, isSubcontractor } from '../types';
 import { MultiSiteSelect } from './MultiSiteSelect';
 import {
   Search,
@@ -316,9 +316,9 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
     }
   };
 
-  // Split employees into regular staff vs contractors
-  const regularEmployees = employees.filter((emp) => emp.designation !== 'Subcontractor');
-  const contractors = employees.filter((emp) => emp.designation === 'Subcontractor');
+  // Split employees into regular staff (direct employees) vs contractors (subcontractors)
+  const regularEmployees = employees.filter((emp) => !isSubcontractor(emp));
+  const contractors = employees.filter((emp) => isSubcontractor(emp));
 
   // Current pool based on active tab
   const currentPool = activeSection === 'employees' ? regularEmployees : contractors;
@@ -337,12 +337,12 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
     return matchesSearch && matchesCategory && matchesSite;
   });
 
-  // Stats are always computed across ALL employees (both tabs)
-  const draftList = Object.values(draftRecords);
-  const presentCount = draftList.filter((r) => r.status === 'PRESENT' || r.status === 'HALF_DAY').length;
-  const absentCount = draftList.filter((r) => r.status === 'ABSENT').length;
-  const otTotalHours = draftList.reduce((acc, r) => acc + (Number(r.ot_hours) || 0), 0);
-  const lateCount = draftList.filter((r) => (r.late_minutes || 0) > 0).length;
+  // Stats are computed for direct employees
+  const directRecords = regularEmployees.map((emp) => draftRecords[emp.id]).filter(Boolean);
+  const presentCount = directRecords.filter((r) => r.status === 'PRESENT' || r.status === 'HALF_DAY').length;
+  const absentCount = directRecords.filter((r) => r.status === 'ABSENT').length;
+  const otTotalHours = directRecords.reduce((acc, r) => acc + (Number(r.ot_hours) || 0), 0);
+  const lateCount = directRecords.filter((r) => (r.late_minutes || 0) > 0).length;
 
   // Status pill helper
   const statusStyle = (status: string) => {
@@ -409,7 +409,7 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
             </div>
             <div>
               <span className="text-[14px] font-medium text-[#6B7280] block">Present</span>
-              <span className="text-[28px] font-bold text-[#16A34A] leading-none mt-1 block">{presentCount} <span className="text-[14px] text-[#6B7280] font-normal">/ {employees.length}</span></span>
+              <span className="text-[28px] font-bold text-[#16A34A] leading-none mt-1 block">{presentCount} <span className="text-[14px] text-[#6B7280] font-normal">/ {regularEmployees.length}</span></span>
             </div>
           </div>
 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { Employee, Site, AttendanceRecord, MonthlyEmployeeSummary } from '../types';
-import { getRecordSiteIds } from '../types';
+import { getRecordSiteIds, isSubcontractor } from '../types';
 import {
   FileSpreadsheet,
   FileText,
@@ -43,8 +43,10 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
   const siteMap = new Map<string, Site>();
   sites.forEach((s) => siteMap.set(s.id, s));
 
-  // Calculate monthly stats per employee
-  const summaries: MonthlyEmployeeSummary[] = employees.map((emp) => {
+  // Calculate monthly stats per employee (direct employees only)
+  const summaries: MonthlyEmployeeSummary[] = employees
+    .filter((emp) => !isSubcontractor(emp))
+    .map((emp) => {
     const empRecords = attendanceRecords.filter((r) => r.employee_id === emp.id);
 
     let workingDays = 0;
