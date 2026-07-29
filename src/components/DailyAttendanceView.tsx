@@ -967,23 +967,4 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
     </div>
   );
 };
-              <button
-                onClick={confirmDiscardAndSwitchDay}
-                className="h-[40px] px-4 rounded-[10px] text-[13px] font-semibold text-[#EF4444] bg-rose-50 hover:bg-rose-100 transition cursor-pointer"
-              >
-                Discard & Switch
-              </button>
-              <button
-                onClick={confirmSaveAndSwitchDay}
-                className="h-[40px] px-5 rounded-[10px] text-[13px] font-semibold text-white bg-[#16A34A] hover:bg-[#15803D] shadow-xs transition cursor-pointer flex items-center space-x-1.5"
-              >
-                <Save className="w-4 h-4 shrink-0" />
-                <span>Save & Switch</span>
-              </button>
-            </div >
-          </div >
-        </div >
-      )}
-    </div >
-  );
-};
+
