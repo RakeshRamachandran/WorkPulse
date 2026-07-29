@@ -117,11 +117,10 @@ export const StatusSelect: React.FC<StatusSelectProps> = ({ value, onChange }) =
       <button
         type="button"
         onClick={handleToggle}
-        className={`h-[38px] px-3.5 rounded-[10px] border flex items-center justify-center space-x-1.5 font-bold text-[14px] shadow-xs cursor-pointer transition-all ${
-          activeItem
+        className={`h-[38px] px-3.5 rounded-[10px] border flex items-center justify-center space-x-1.5 font-bold text-[14px] shadow-xs cursor-pointer transition-all ${activeItem
             ? activeItem.color
             : 'bg-[#F8FAFC] text-[#6B7280] border-[#E5E7EB] hover:bg-slate-100'
-        }`}
+          }`}
         title={activeItem ? activeItem.label : 'Select Status'}
       >
         <span>{activeItem ? activeItem.code : '--'}</span>
@@ -149,11 +148,10 @@ export const StatusSelect: React.FC<StatusSelectProps> = ({ value, onChange }) =
                   onChange(item.value);
                   setIsOpen(false);
                 }}
-                className={`w-full text-left px-3 py-2 rounded-[8px] text-[13px] font-bold flex items-center space-x-2.5 transition cursor-pointer ${
-                  value === item.value
+                className={`w-full text-left px-3 py-2 rounded-[8px] text-[13px] font-bold flex items-center space-x-2.5 transition cursor-pointer ${value === item.value
                     ? 'bg-slate-100 text-[#111827]'
                     : 'hover:bg-[#F8FAFC] text-[#374151]'
-                }`}
+                  }`}
               >
                 <span className={`w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-bold text-white shrink-0 ${item.color.split(' ')[0]}`}>
                   {item.code}
@@ -224,8 +222,8 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
       );
       if (existing) {
         const siteIds = getRecordSiteIds(existing);
-        const resolvedStatus = (existing.status && existing.status.trim() !== '') 
-          ? existing.status 
+        const resolvedStatus = (existing.status && existing.status.trim() !== '')
+          ? existing.status
           : (isSunday ? 'HOLIDAY' : existing.status);
 
         map[emp.id] = {
@@ -594,11 +592,10 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
         <div className="flex border-b border-[#E5E7EB] rounded-t-[14px] overflow-hidden">
           <button
             onClick={() => { setActiveSection('employees'); setSearchQuery(''); setFilterCategory('ALL'); setFilterSiteId('ALL'); }}
-            className={`flex-1 flex items-center justify-center space-x-2.5 py-3.5 text-[14px] font-semibold transition-all duration-150 border-b-2 ${
-              activeSection === 'employees'
+            className={`flex-1 flex items-center justify-center space-x-2.5 py-3.5 text-[14px] font-semibold transition-all duration-150 border-b-2 ${activeSection === 'employees'
                 ? 'border-[#16A34A] text-[#16A34A] bg-[#F0FDF4]'
                 : 'border-transparent text-[#6B7280] hover:text-[#111827] hover:bg-[#F8FAFC]'
-            }`}
+              }`}
           >
             <Users className="w-4 h-4 shrink-0" />
             <span>Employees</span>
@@ -611,11 +608,10 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
 
           <button
             onClick={() => { setActiveSection('contractors'); setSearchQuery(''); setFilterCategory('ALL'); setFilterSiteId('ALL'); }}
-            className={`flex-1 flex items-center justify-center space-x-2.5 py-3.5 text-[14px] font-semibold transition-all duration-150 border-b-2 ${
-              activeSection === 'contractors'
+            className={`flex-1 flex items-center justify-center space-x-2.5 py-3.5 text-[14px] font-semibold transition-all duration-150 border-b-2 ${activeSection === 'contractors'
                 ? 'border-orange-500 text-orange-600 bg-orange-50'
                 : 'border-transparent text-[#6B7280] hover:text-[#111827] hover:bg-[#F8FAFC]'
-            }`}
+              }`}
           >
             <HardHat className="w-4 h-4 shrink-0" />
             <span>Contractors</span>
@@ -721,11 +717,10 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
                     <tr key={emp.id} className="hover:bg-[#F9FBFA] transition-colors duration-150">
                       {/* Emp ID Pill Badge */}
                       <td className="py-3 px-5">
-                        <span className={`px-3 py-1 rounded-full text-[12px] font-medium inline-block ${
-                          activeSection === 'contractors'
+                        <span className={`px-3 py-1 rounded-full text-[12px] font-medium inline-block ${activeSection === 'contractors'
                             ? 'bg-orange-50 text-orange-600'
                             : 'bg-[#E8F7EE] text-[#16A34A]'
-                        }`}>
+                          }`}>
                           {emp.emp_id}
                         </span>
                       </td>
@@ -781,11 +776,10 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
                               }}
                               onFocus={(e) => e.target.select()}
                               title="Number of labours brought by this contractor today"
-                              className={`w-20 h-[40px] border text-center font-semibold text-[14px] rounded-[10px] focus:outline-none focus:ring-2 focus:bg-white transition ${
-                                currentLabourCount > 0
+                              className={`w-20 h-[40px] border text-center font-semibold text-[14px] rounded-[10px] focus:outline-none focus:ring-2 focus:bg-white transition ${currentLabourCount > 0
                                   ? 'bg-orange-50 border-orange-300 text-orange-700 focus:ring-orange-400'
                                   : 'bg-[#F8FAFC] border-[#E5E7EB] text-[#111827] focus:ring-[#16A34A]'
-                              }`}
+                                }`}
                             />
                           )}
                         </td>
@@ -808,11 +802,10 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
                               handleOTChange(emp.id, val === '' ? 0 : Math.max(0, parseFloat(val) || 0));
                             }}
                             onFocus={(e) => e.target.select()}
-                            className={`w-20 h-[40px] border text-center font-semibold text-[14px] rounded-[10px] focus:outline-none focus:ring-2 focus:bg-white transition ${
-                              currentOT > 0
+                            className={`w-20 h-[40px] border text-center font-semibold text-[14px] rounded-[10px] focus:outline-none focus:ring-2 focus:bg-white transition ${currentOT > 0
                                 ? 'bg-emerald-50 border-emerald-300 text-emerald-700 focus:ring-emerald-400'
                                 : 'bg-[#F8FAFC] border-[#E5E7EB] text-[#111827] focus:ring-[#16A34A]'
-                            }`}
+                              }`}
                           />
                         )}
                       </td>
@@ -833,11 +826,10 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
                                     const mins = currentLateMins % 60;
                                     handleLateTimeChange(emp.id, hrs * 60 + mins);
                                   }}
-                                  className={`w-full h-[40px] text-[13px] font-semibold pl-2.5 pr-6 rounded-[10px] border appearance-none cursor-pointer focus:outline-none transition ${
-                                    currentLateMins > 0
+                                  className={`w-full h-[40px] text-[13px] font-semibold pl-2.5 pr-6 rounded-[10px] border appearance-none cursor-pointer focus:outline-none transition ${currentLateMins > 0
                                       ? 'bg-rose-50 text-[#EF4444] border-rose-200'
                                       : 'bg-[#F8FAFC] text-[#111827] border-[#E5E7EB]'
-                                  }`}
+                                    }`}
                                   title="Late Hours"
                                 >
                                   <option value="0">0 hr</option>
@@ -862,11 +854,10 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
                                     const mins = parseInt(e.target.value, 10);
                                     handleLateTimeChange(emp.id, hrs * 60 + mins);
                                   }}
-                                  className={`w-full h-[40px] text-[13px] font-semibold pl-2.5 pr-6 rounded-[10px] border appearance-none cursor-pointer focus:outline-none transition ${
-                                    currentLateMins > 0
+                                  className={`w-full h-[40px] text-[13px] font-semibold pl-2.5 pr-6 rounded-[10px] border appearance-none cursor-pointer focus:outline-none transition ${currentLateMins > 0
                                       ? 'bg-rose-50 text-[#EF4444] border-rose-200'
                                       : 'bg-[#F8FAFC] text-[#111827] border-[#E5E7EB]'
-                                  }`}
+                                    }`}
                                   title="Late Minutes"
                                 >
                                   <option value="0">0 min</option>
@@ -920,11 +911,10 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
             <button
               onClick={handleSaveAll}
               disabled={isSaving}
-              className={`h-[40px] px-5 rounded-[10px] text-[13px] font-semibold shadow-xs transition-all duration-200 flex items-center space-x-2 cursor-pointer active:scale-95 shrink-0 ${
-                hasUnsavedChanges
+              className={`h-[40px] px-5 rounded-[10px] text-[13px] font-semibold shadow-xs transition-all duration-200 flex items-center space-x-2 cursor-pointer active:scale-95 shrink-0 ${hasUnsavedChanges
                   ? 'bg-[#16A34A] hover:bg-[#15803D] text-white ring-2 ring-[#16A34A]/40'
                   : 'bg-[#16A34A] hover:bg-[#15803D] text-white'
-              }`}
+                }`}
             >
               <Save className={`w-4 h-4 shrink-0 ${isSaving ? 'animate-spin' : ''}`} />
               <span>{isSaving ? 'Saving...' : `Save Attendance`}</span>
@@ -975,5 +965,25 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
         </div>
       )}
     </div>
+  );
+};
+              <button
+                onClick={confirmDiscardAndSwitchDay}
+                className="h-[40px] px-4 rounded-[10px] text-[13px] font-semibold text-[#EF4444] bg-rose-50 hover:bg-rose-100 transition cursor-pointer"
+              >
+                Discard & Switch
+              </button>
+              <button
+                onClick={confirmSaveAndSwitchDay}
+                className="h-[40px] px-5 rounded-[10px] text-[13px] font-semibold text-white bg-[#16A34A] hover:bg-[#15803D] shadow-xs transition cursor-pointer flex items-center space-x-1.5"
+              >
+                <Save className="w-4 h-4 shrink-0" />
+                <span>Save & Switch</span>
+              </button>
+            </div >
+          </div >
+        </div >
+      )}
+    </div >
   );
 };

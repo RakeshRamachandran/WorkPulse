@@ -48,61 +48,61 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const summaries: MonthlyEmployeeSummary[] = employees
     .filter((emp) => !isSubcontractor(emp))
     .map((emp) => {
-    const empRecords = attendanceRecords.filter((r) => r.employee_id === emp.id);
+      const empRecords = attendanceRecords.filter((r) => r.employee_id === emp.id);
 
-    let workingDays = 0;
-    let leaveDays = 0;
-    let holidayCount = 0;
-    let otHours = 0;
-    let totalLateMinutes = 0;
-    const siteDays: Record<string, number> = {};
+      let workingDays = 0;
+      let leaveDays = 0;
+      let holidayCount = 0;
+      let otHours = 0;
+      let totalLateMinutes = 0;
+      const siteDays: Record<string, number> = {};
 
-    empRecords.forEach((r) => {
-      if (r.status === 'PRESENT') {
-        workingDays += 1;
-      } else if (r.status === 'HALF_DAY') {
-        workingDays += 0.5;
-        leaveDays += 0.5;
-      } else if (r.status === 'ABSENT') {
-        leaveDays += 1;
-      } else if (r.status === 'HOLIDAY') {
-        holidayCount += 1;
-      }
+      empRecords.forEach((r) => {
+        if (r.status === 'PRESENT') {
+          workingDays += 1;
+        } else if (r.status === 'HALF_DAY') {
+          workingDays += 0.5;
+          leaveDays += 0.5;
+        } else if (r.status === 'ABSENT') {
+          leaveDays += 1;
+        } else if (r.status === 'HOLIDAY') {
+          holidayCount += 1;
+        }
 
-      otHours += Number(r.ot_hours) || 0;
-      totalLateMinutes += Number(r.late_minutes) || 0;
+        otHours += Number(r.ot_hours) || 0;
+        totalLateMinutes += Number(r.late_minutes) || 0;
 
-      if (r.status === 'PRESENT' || r.status === 'HALF_DAY') {
-        const sIds = getRecordSiteIds(r);
-        sIds.forEach((sId) => {
-          siteDays[sId] = (siteDays[sId] || 0) + 1;
-        });
-      }
+        if (r.status === 'PRESENT' || r.status === 'HALF_DAY') {
+          const sIds = getRecordSiteIds(r);
+          sIds.forEach((sId) => {
+            siteDays[sId] = (siteDays[sId] || 0) + 1;
+          });
+        }
+      });
+
+      const regularHours = workingDays * 8;
+      const totalHours = regularHours + otHours;
+
+      const lateHrs = Math.floor(totalLateMinutes / 60);
+      const lateMins = totalLateMinutes % 60;
+      const lateFormatted =
+        totalLateMinutes > 0
+          ? `${lateHrs > 0 ? `${lateHrs}h ` : ''}${lateMins}m`
+          : '-';
+
+      return {
+        employee: emp,
+        workingDays,
+        leaveDays,
+        holidayCount,
+        regularHours,
+        otHours,
+        totalHours,
+        totalLateMinutes,
+        lateFormatted,
+        siteDays,
+      };
     });
-
-    const regularHours = workingDays * 8;
-    const totalHours = regularHours + otHours;
-
-    const lateHrs = Math.floor(totalLateMinutes / 60);
-    const lateMins = totalLateMinutes % 60;
-    const lateFormatted =
-      totalLateMinutes > 0
-        ? `${lateHrs > 0 ? `${lateHrs}h ` : ''}${lateMins}m`
-        : '-';
-
-    return {
-      employee: emp,
-      workingDays,
-      leaveDays,
-      holidayCount,
-      regularHours,
-      otHours,
-      totalHours,
-      totalLateMinutes,
-      lateFormatted,
-      siteDays,
-    };
-  });
 
   // Filtered summaries (sorted alphabetically by employee name)
   const filteredSummaries = summaries

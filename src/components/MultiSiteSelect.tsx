@@ -149,9 +149,8 @@ export const MultiSiteSelect: React.FC<MultiSiteSelectProps> = ({
       {/* Trigger Button / Display Box */}
       <div
         onClick={handleToggle}
-        className={`min-h-[40px] w-full bg-[#F8FAFC] border border-[#E5E7EB] rounded-[10px] px-3 py-1.5 flex items-center justify-between gap-2 cursor-pointer transition-all duration-150 ${
-          isOpen ? 'ring-2 ring-[#16A34A] bg-white border-[#16A34A]' : 'hover:bg-white hover:border-gray-300'
-        } ${disabled ? 'opacity-50 cursor-not-allowed bg-gray-100' : ''}`}
+        className={`min-h-[40px] w-full bg-[#F8FAFC] border border-[#E5E7EB] rounded-[10px] px-3 py-1.5 flex items-center justify-between gap-2 cursor-pointer transition-all duration-150 ${isOpen ? 'ring-2 ring-[#16A34A] bg-white border-[#16A34A]' : 'hover:bg-white hover:border-gray-300'
+          } ${disabled ? 'opacity-50 cursor-not-allowed bg-gray-100' : ''}`}
       >
         <div className="flex items-center space-x-2 flex-1 flex-wrap gap-1.5 overflow-hidden">
           <Building className="w-4 h-4 text-[#6B7280] shrink-0" />
@@ -265,19 +264,17 @@ export const MultiSiteSelect: React.FC<MultiSiteSelectProps> = ({
                     <div
                       key={site.id}
                       onClick={() => toggleSite(site.id)}
-                      className={`flex items-center justify-between p-2 rounded-[8px] cursor-pointer text-[13px] transition ${
-                        isSelected
+                      className={`flex items-center justify-between p-2 rounded-[8px] cursor-pointer text-[13px] transition ${isSelected
                           ? 'bg-[#E8F7EE] text-[#16A34A] font-semibold'
                           : 'hover:bg-[#F8FAFC] text-[#111827]'
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center space-x-2.5 min-w-0 pr-2">
                         <div
-                          className={`w-4 h-4 rounded border flex items-center justify-center transition shrink-0 ${
-                            isSelected
+                          className={`w-4 h-4 rounded border flex items-center justify-center transition shrink-0 ${isSelected
                               ? 'bg-[#16A34A] border-[#16A34A] text-white'
                               : 'border-gray-300 bg-white'
-                          }`}
+                            }`}
                         >
                           {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
                         </div>

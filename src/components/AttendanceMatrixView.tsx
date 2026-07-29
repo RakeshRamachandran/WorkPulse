@@ -220,9 +220,8 @@ export const AttendanceMatrixView: React.FC<AttendanceMatrixViewProps> = ({
                     }
 
                     const tooltipText = rec
-                      ? `Day ${day}: ${status}\nSite(s): ${siteNamesStr}${
-                          ot > 0 ? `\nOT: ${ot} hrs` : ''
-                        }`
+                      ? `Day ${day}: ${status}\nSite(s): ${siteNamesStr}${ot > 0 ? `\nOT: ${ot} hrs` : ''
+                      }`
                       : `Day ${day}: Not Logged`;
 
                     return (

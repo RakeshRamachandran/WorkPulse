@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS public.attendance_records (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     employee_id UUID NOT NULL REFERENCES public.employees(id) ON DELETE CASCADE,
     date DATE NOT NULL,
-    status TEXT NOT NULL DEFAULT 'PRESENT', -- 'PRESENT', 'ABSENT', 'HALF_DAY', 'HOLIDAY'
+    status TEXT NOT NULL DEFAULT 'PRESENT', -- 'PRESENT', 'ABSENT', 'HALF_DAY', 'LEAVE', 'HOLIDAY'
     site_id UUID REFERENCES public.sites(id) ON DELETE SET NULL,
     site_ids TEXT[] DEFAULT '{}',
     ot_hours NUMERIC(4, 2) NOT NULL DEFAULT 0.0,

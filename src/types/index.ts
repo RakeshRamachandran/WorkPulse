@@ -81,3 +81,16 @@ export interface AppUser {
 }
 
 export type ActiveTab = 'dashboard' | 'daily' | 'matrix' | 'summary' | 'masters' | 'sites' | 'supabase';
+export interface SupabaseConfig {
+  url: string;
+  anonKey: string;
+  isConnected: boolean;
+}
+
+export interface AppUser {
+  id?: string;
+  username: string;
+  role: 'Superadmin' | 'Admin';
+}
+
+export type ActiveTab = 'dashboard' | 'daily' | 'matrix' | 'summary' | 'masters' | 'sites' | 'supabase';
