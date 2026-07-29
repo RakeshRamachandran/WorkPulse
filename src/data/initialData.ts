@@ -91,11 +91,11 @@ export function generateInitialAttendance(): AttendanceRecord[] {
       const dateObj = new Date(year, month - 1, day);
       const isSunday = dateObj.getDay() === 0;
 
-      let status: 'PRESENT' | 'ABSENT' | 'HOLIDAY' = 'PRESENT';
+      let status: 'PRESENT' | 'LEAVE' | 'HOLIDAY' = 'PRESENT';
       if (isSunday) {
         status = 'HOLIDAY';
       } else if ((empIdx + day) % 11 === 0) {
-        status = 'ABSENT';
+        status = 'LEAVE';
       }
 
       const site1 = INITIAL_SITES[empIdx % INITIAL_SITES.length];

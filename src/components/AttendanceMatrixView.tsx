@@ -137,7 +137,7 @@ export const AttendanceMatrixView: React.FC<AttendanceMatrixViewProps> = ({
           <span className="w-6 h-6 rounded-full bg-[#EF4444] text-white border border-[#EF4444] font-bold flex items-center justify-center text-[11px]">
             L
           </span>
-          <span className="font-medium text-[#111827]">Leave / Absent</span>
+          <span className="font-medium text-[#111827]">Leave</span>
         </div>
         <div className="flex items-center space-x-2 shrink-0">
           <span className="w-6 h-6 rounded-full bg-purple-600 text-white border border-purple-600 font-bold flex items-center justify-center text-[11px]">
@@ -211,7 +211,7 @@ export const AttendanceMatrixView: React.FC<AttendanceMatrixViewProps> = ({
                     } else if (status === 'HALF_DAY') {
                       bgClass = 'bg-[#F59E0B] text-white border-[#F59E0B] font-bold shadow-xs';
                       letter = 'HD';
-                    } else if (status === 'ABSENT') {
+                    } else if (status === 'LEAVE') {
                       bgClass = 'bg-[#EF4444] text-white border-[#EF4444] font-bold shadow-xs';
                       letter = 'L';
                     } else if (status === 'HOLIDAY') {

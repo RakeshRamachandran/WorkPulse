@@ -63,7 +63,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         } else if (r.status === 'HALF_DAY') {
           workingDays += 0.5;
           leaveDays += 0.5;
-        } else if (r.status === 'ABSENT') {
+        } else if (r.status === 'LEAVE') {
           leaveDays += 1;
         } else if (r.status === 'HOLIDAY') {
           holidayCount += 1;

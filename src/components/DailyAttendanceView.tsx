@@ -31,7 +31,7 @@ interface StatusSelectProps {
 const STATUS_ITEMS = [
   { value: 'PRESENT', code: 'P', label: 'P - Present (Full Day)', color: 'bg-[#16A34A] text-white border-[#16A34A]' },
   { value: 'HALF_DAY', code: 'H', label: 'H - Half Day (0.5 Day)', color: 'bg-[#F59E0B] text-white border-[#F59E0B]' },
-  { value: 'ABSENT', code: 'L', label: 'L - Leave / Absent', color: 'bg-[#EF4444] text-white border-[#EF4444]' },
+  { value: 'LEAVE', code: 'L', label: 'L - Leave', color: 'bg-[#EF4444] text-white border-[#EF4444]' },
   { value: 'HOLIDAY', code: 'HL', label: 'HL - Official Holiday', color: 'bg-purple-600 text-white border-purple-600' },
 ];
 
@@ -280,12 +280,12 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
   const handleStatusChange = (empId: string, status: string) => {
     const current = draftRecords[empId] || {};
     const curSiteIds = getRecordSiteIds(current);
-    const isAbsentOrHoliday = status === 'ABSENT' || status === 'HOLIDAY';
+    const isAbsentOrHoliday = status === 'LEAVE' || status === 'HOLIDAY';
     updateLocalRecord(empId, {
       status: status as AttendanceStatus,
       site_id: isAbsentOrHoliday ? null : (curSiteIds[0] || null),
       site_ids: isAbsentOrHoliday ? [] : curSiteIds,
-      ot_hours: status === 'ABSENT' ? 0 : (current.ot_hours || 0),
+      ot_hours: isAbsentOrHoliday ? 0 : (current.ot_hours || 0),
     });
   };
 
@@ -453,7 +453,7 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
   // Stats are computed for direct employees
   const directRecords = regularEmployees.map((emp) => draftRecords[emp.id]).filter(Boolean);
   const presentCount = directRecords.filter((r) => r.status === 'PRESENT' || r.status === 'HALF_DAY').length;
-  const absentCount = directRecords.filter((r) => r.status === 'ABSENT').length;
+  const absentCount = directRecords.filter((r) => r.status === 'LEAVE').length;
   const otTotalHours = directRecords.reduce((acc, r) => acc + (Number(r.ot_hours) || 0), 0);
   const lateCount = directRecords.filter((r) => (r.late_minutes || 0) > 0).length;
 
@@ -461,7 +461,7 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
   const statusStyle = (status: string) => {
     if (status === 'PRESENT') return 'bg-[#16A34A] text-white border-[#16A34A] font-semibold shadow-xs';
     if (status === 'HALF_DAY') return 'bg-[#F59E0B] text-white border-[#F59E0B] font-semibold shadow-xs';
-    if (status === 'ABSENT') return 'bg-[#EF4444] text-white border-[#EF4444] font-semibold shadow-xs';
+    if (status === 'LEAVE') return 'bg-[#EF4444] text-white border-[#EF4444] font-semibold shadow-xs';
     if (status === 'HOLIDAY') return 'bg-purple-600 text-white border-purple-600 font-semibold shadow-xs';
     return 'bg-[#F8FAFC] text-[#6B7280] border-[#E5E7EB] font-normal hover:bg-slate-100';
   };
@@ -711,7 +711,7 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
                   const currentOT = rec.ot_hours || 0;
                   const currentLateMins = rec.late_minutes || 0;
                   const currentLabourCount = rec.labour_count || 0;
-                  const isAbsentOrHoliday = currentStatus === 'ABSENT' || currentStatus === 'HOLIDAY';
+                  const isAbsentOrHoliday = currentStatus === 'LEAVE' || currentStatus === 'HOLIDAY';
 
                   return (
                     <tr key={emp.id} className="hover:bg-[#F9FBFA] transition-colors duration-150">
@@ -766,8 +766,7 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
                             <input
                               type="number"
                               min="0"
-                              max="500"
-                              step="1"
+                              max="100"
                               placeholder="0"
                               value={currentLabourCount === 0 ? '' : currentLabourCount}
                               onChange={(e) => {
@@ -775,7 +774,6 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
                                 handleLabourCountChange(emp.id, val === '' ? 0 : Math.max(0, parseInt(val, 10) || 0));
                               }}
                               onFocus={(e) => e.target.select()}
-                              title="Number of labours brought by this contractor today"
                               className={`w-20 h-[40px] border text-center font-semibold text-[14px] rounded-[10px] focus:outline-none focus:ring-2 focus:bg-white transition ${currentLabourCount > 0
                                   ? 'bg-orange-50 border-orange-300 text-orange-700 focus:ring-orange-400'
                                   : 'bg-[#F8FAFC] border-[#E5E7EB] text-[#111827] focus:ring-[#16A34A]'
@@ -787,7 +785,7 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
 
                       {/* OT Input */}
                       <td className="py-3 px-5 text-center">
-                        {currentStatus === 'ABSENT' ? (
+                        {isAbsentOrHoliday ? (
                           <span className="text-[14px] text-[#6B7280]">-</span>
                         ) : (
                           <input
