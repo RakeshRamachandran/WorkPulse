@@ -193,3 +193,11 @@ INSERT INTO public.employees (emp_id, name, designation, category) VALUES
 ('E055', 'SUB- BHUVANACHANDRAN', 'Subcontractor', 'Worker')
 ON CONFLICT (emp_id) DO NOTHING;
 
+-- MIGRATION UTILITY: CONVERT DD-MM-YYYY DATES IN ATTENDANCE_RECORDS TO STANDARD ISO (YYYY-MM-DD)
+UPDATE public.attendance_records
+SET date = (
+    substr(date, 7, 4) || '-' || substr(date, 4, 2) || '-' || substr(date, 1, 2)
+)
+WHERE date LIKE '__-__-____';
+
+

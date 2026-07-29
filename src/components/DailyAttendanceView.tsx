@@ -218,7 +218,7 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
 
     employees.forEach((emp) => {
       const existing = attendanceRecords.find(
-        (r) => r.employee_id === emp.id && r.date === dateStr
+        (r) => (r.employee_id === emp.id || r.employee_id === emp.emp_id) && r.date === dateStr
       );
       if (existing) {
         const siteIds = getRecordSiteIds(existing);
@@ -228,6 +228,7 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
 
         map[emp.id] = {
           ...existing,
+          employee_id: emp.id,
           status: resolvedStatus as any,
           remarks: existing.remarks || (isSunday ? 'Sunday Weekly Off' : undefined),
           site_ids: siteIds,
@@ -290,7 +291,10 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
   };
 
   const handleSitesChange = (empId: string, siteIds: string[]) => {
+    const current = draftRecords[empId] || {};
+    const newStatus = (!current.status || current.status.trim() === '') ? 'PRESENT' : current.status;
     updateLocalRecord(empId, {
+      status: newStatus as AttendanceStatus,
       site_ids: siteIds,
       site_id: siteIds[0] || null,
     });
@@ -394,8 +398,9 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
       if (onUnsavedStatusChange) onUnsavedStatusChange(false);
       setShowSavedNotification(true);
       setTimeout(() => setShowSavedNotification(false), 3000);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to save daily attendance:', err);
+      alert(`Failed to save attendance records: ${err?.message || 'Unknown database error'}`);
     } finally {
       setIsSaving(false);
     }

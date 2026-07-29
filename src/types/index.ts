@@ -35,8 +35,33 @@ export interface AttendanceRecord {
 
 export function getRecordSiteIds(record?: Partial<AttendanceRecord> | null): string[] {
   if (!record) return [];
-  if (record.site_ids && record.site_ids.length > 0) {
-    return record.site_ids;
+  if (record.site_ids) {
+    if (Array.isArray(record.site_ids)) {
+      return record.site_ids.filter((id): id is string => Boolean(id && typeof id === 'string'));
+    }
+    if (typeof record.site_ids === 'string') {
+      const str = (record.site_ids as string).trim();
+      if (str.startsWith('[') && str.endsWith(']')) {
+        try {
+          const parsed = JSON.parse(str);
+          if (Array.isArray(parsed)) {
+            return parsed.filter((id): id is string => Boolean(id && typeof id === 'string'));
+          }
+        } catch {
+          // fallback
+        }
+      }
+      if (str.startsWith('{') && str.endsWith('}')) {
+        return str
+          .slice(1, -1)
+          .split(',')
+          .map((s) => s.trim().replace(/^"|"$/g, ''))
+          .filter(Boolean);
+      }
+      if (str.length > 0) {
+        return [str];
+      }
+    }
   }
   if (record.site_id) {
     return [record.site_id];
@@ -52,6 +77,26 @@ export function isSubcontractor(emp?: Partial<Employee> | null): boolean {
     Boolean(emp.name && emp.name.toUpperCase().startsWith('SUB-')) ||
     Boolean(emp.emp_id && emp.emp_id.toUpperCase().startsWith('SUB-'))
   );
+}
+
+export function normalizeDateStr(dateStr?: string | null): string {
+  if (!dateStr) return '';
+  const trimmed = dateStr.trim();
+  const ddmmyyyy = trimmed.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+  if (ddmmyyyy) {
+    const day = ddmmyyyy[1].padStart(2, '0');
+    const month = ddmmyyyy[2].padStart(2, '0');
+    const year = ddmmyyyy[3];
+    return `${year}-${month}-${day}`;
+  }
+  const yyyymmdd = trimmed.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+  if (yyyymmdd) {
+    const year = yyyymmdd[1];
+    const month = yyyymmdd[2].padStart(2, '0');
+    const day = yyyymmdd[3].padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+  return trimmed;
 }
 
 

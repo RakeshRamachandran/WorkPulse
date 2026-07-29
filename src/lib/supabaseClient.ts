@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import type { Employee, Site, AttendanceRecord, SupabaseConfig, AppUser } from '../types';
+import { getRecordSiteIds, normalizeDateStr, type Employee, type Site, type AttendanceRecord, type SupabaseConfig, type AppUser } from '../types';
 import { INITIAL_EMPLOYEES, INITIAL_SITES } from '../data/initialData';
 
 const CONFIG_STORAGE_KEY = 've_supabase_config';
@@ -9,24 +9,33 @@ function isValidUuid(val: any): boolean {
 }
 
 export function getStoredConfig(): SupabaseConfig {
-  const saved = localStorage.getItem(CONFIG_STORAGE_KEY);
-  if (saved) {
-    try {
-      const parsed = JSON.parse(saved);
-      if (parsed.url && parsed.anonKey) {
-        return {
-          ...parsed,
-          url: parsed.url.trim().replace(/\/rest\/v1\/?$/, '').replace(/\/$/, ''),
-        };
+  if (typeof localStorage !== 'undefined') {
+    const saved = localStorage.getItem(CONFIG_STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.url && parsed.anonKey) {
+          return {
+            ...parsed,
+            url: parsed.url.trim().replace(/\/rest\/v1\/?$/, '').replace(/\/$/, ''),
+          };
+        }
+      } catch {
+        // fallback
       }
-    } catch {
-      // fallback
     }
   }
 
   // Fallback to Vite environment variables (.env / .env.local)
-  const envUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim().replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
-  const envKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
+  const envUrl = (
+    (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_URL) ||
+    'https://ecmazqljxuyetnswbkip.supabase.co'
+  ).trim().replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
+
+  const envKey = (
+    (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_ANON_KEY) ||
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjbWF6cWxqeHV5ZXRuc3dia2lwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUwNjk2NzcsImV4cCI6MjEwMDY0NTY3N30.rIrDPP2_3iv07du3_XIdSouwVlC6OhzPz4_TDhWmJk8'
+  ).trim();
 
   return {
     url: envUrl,
@@ -36,11 +45,13 @@ export function getStoredConfig(): SupabaseConfig {
 }
 
 export function saveStoredConfig(config: SupabaseConfig) {
-  const sanitized = {
-    ...config,
-    url: config.url.trim().replace(/\/rest\/v1\/?$/, '').replace(/\/$/, ''),
-  };
-  localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(sanitized));
+  if (typeof localStorage !== 'undefined') {
+    const sanitized = {
+      ...config,
+      url: config.url.trim().replace(/\/rest\/v1\/?$/, '').replace(/\/$/, ''),
+    };
+    localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(sanitized));
+  }
 }
 
 let supabaseInstance: SupabaseClient | null = null;
@@ -252,11 +263,8 @@ export class DataService {
   }
 
   // --- ATTENDANCE ---
-  static async getAttendanceForMonth(year: number, month: number): Promise<AttendanceRecord[]> {
-    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-    const lastDay = new Date(year, month, 0).getDate();
-    const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-
+  static async getAttendanceForDate(dateStr: string): Promise<AttendanceRecord[]> {
+    const normDate = normalizeDateStr(dateStr) || dateStr;
     const client = getSupabaseClient();
     if (!client) return [];
 
@@ -264,32 +272,94 @@ export class DataService {
       const { data, error } = await client
         .from('attendance_records')
         .select('*')
-        .gte('date', startDate)
-        .lte('date', endDate);
+        .eq('date', normDate);
 
-      if (!error && data) {
-        return (data as AttendanceRecord[]).map((r) => {
-          const site_ids = r.site_ids && Array.isArray(r.site_ids) && r.site_ids.length > 0
-            ? r.site_ids
-            : (r.site_id ? [r.site_id] : []);
-          return {
-            ...r,
-            site_id: site_ids[0] || r.site_id || null,
-            site_ids,
-            ot_hours: Number(r.ot_hours) || 0,
-            late_hours: Number(r.late_hours) || 0,
-            late_minutes: Number(r.late_minutes) || 0,
-            labour_count: Number(r.labour_count) || 0,
-          };
-        });
-      } else if (error) {
-        console.error('Online DB getAttendanceForMonth error:', error);
+      if (error) {
+        console.error('Online DB getAttendanceForDate error:', error);
+        return [];
       }
-    } catch (err) {
-      console.error('Online DB getAttendanceForMonth error:', err);
-    }
 
-    return [];
+      if (!data) return [];
+
+      return data.map((r) => {
+        const dStr = normalizeDateStr(r.date) || normDate;
+        const site_ids = getRecordSiteIds(r);
+        return {
+          ...r,
+          date: dStr,
+          site_id: site_ids[0] || r.site_id || null,
+          site_ids,
+          ot_hours: Number(r.ot_hours) || 0,
+          late_hours: Number(r.late_hours) || 0,
+          late_minutes: Number(r.late_minutes) || 0,
+          labour_count: Number(r.labour_count) || 0,
+        };
+      });
+    } catch (err) {
+      console.error('Online DB getAttendanceForDate exception:', err);
+      return [];
+    }
+  }
+
+  static async getAttendanceForDateRange(startDate: string, endDate: string): Promise<AttendanceRecord[]> {
+    const normStart = normalizeDateStr(startDate) || startDate;
+    const normEnd = normalizeDateStr(endDate) || endDate;
+    const client = getSupabaseClient();
+    if (!client) return [];
+
+    try {
+      let rawData: any[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const from = page * pageSize;
+        const to = from + pageSize - 1;
+
+        const { data, error } = await client
+          .from('attendance_records')
+          .select('*')
+          .gte('date', normStart)
+          .lte('date', normEnd)
+          .range(from, to);
+
+        if (error || !data) {
+          console.error('Online DB getAttendanceForDateRange error:', error);
+          hasMore = false;
+        } else {
+          rawData = rawData.concat(data);
+          if (data.length < pageSize) hasMore = false;
+          else page++;
+        }
+      }
+
+      return rawData.map((r) => {
+        const dStr = normalizeDateStr(r.date) || r.date;
+        const site_ids = getRecordSiteIds(r);
+        return {
+          ...r,
+          date: dStr,
+          site_id: site_ids[0] || r.site_id || null,
+          site_ids,
+          ot_hours: Number(r.ot_hours) || 0,
+          late_hours: Number(r.late_hours) || 0,
+          late_minutes: Number(r.late_minutes) || 0,
+          labour_count: Number(r.labour_count) || 0,
+        };
+      });
+    } catch (err) {
+      console.error('Online DB getAttendanceForDateRange exception:', err);
+      return [];
+    }
+  }
+
+  static async getAttendanceForMonth(year: number, month: number): Promise<AttendanceRecord[]> {
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+    const lastDay = new Date(year, month, 0).getDate();
+    const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+    return this.getAttendanceForDateRange(startDate, endDate);
   }
 
   private static async resolveRecordUuids(record: Partial<AttendanceRecord>): Promise<{
@@ -308,15 +378,15 @@ export class DataService {
         const empMatch = employees.find(
           (e) => e.id === record.employee_id || e.emp_id === record.employee_id
         );
-        if (empMatch && isValidUuid(empMatch.id)) {
+        if (empMatch) {
           empUuid = empMatch.id;
+        } else {
+          empUuid = record.employee_id;
         }
       }
     }
 
-    const rawSiteIds = record.site_ids && Array.isArray(record.site_ids)
-      ? record.site_ids
-      : (record.site_id ? [record.site_id] : []);
+    const rawSiteIds = getRecordSiteIds(record);
 
     const resolvedSiteIds: string[] = [];
     rawSiteIds.forEach((sId) => {
@@ -324,16 +394,18 @@ export class DataService {
         resolvedSiteIds.push(sId);
       } else {
         const siteMatch = sites.find((s) => s.id === sId || s.code === sId || s.name === sId);
-        if (siteMatch && isValidUuid(siteMatch.id)) {
+        if (siteMatch) {
           resolvedSiteIds.push(siteMatch.id);
+        } else if (sId) {
+          resolvedSiteIds.push(sId);
         }
       }
     });
 
-    const primarySiteUuid = resolvedSiteIds.length > 0 ? resolvedSiteIds[0] : null;
+    const primarySiteUuid = resolvedSiteIds.length > 0 ? resolvedSiteIds[0] : (record.site_id || null);
 
     return {
-      employee_id: empUuid,
+      employee_id: empUuid || record.employee_id || null,
       site_id: primarySiteUuid,
       site_ids: resolvedSiteIds,
     };
@@ -348,9 +420,12 @@ export class DataService {
     const { employee_id: resolvedEmpId, site_id: primarySiteUuid, site_ids: resolvedSiteIds } =
       await this.resolveRecordUuids(record);
 
+    const normDate = normalizeDateStr(record.date) || record.date;
+
     const recordToSave = {
       ...record,
       employee_id: resolvedEmpId || record.employee_id,
+      date: normDate,
       site_id: primarySiteUuid,
       site_ids: resolvedSiteIds,
       ot_hours: Number(record.ot_hours) || 0,
@@ -360,29 +435,44 @@ export class DataService {
       remarks: record.remarks || null,
     };
 
-    if (recordToSave.employee_id && isValidUuid(recordToSave.employee_id) && recordToSave.date) {
-      const { data, error } = await client
+    if (recordToSave.employee_id && recordToSave.date) {
+      const payloadItem = {
+        employee_id: recordToSave.employee_id,
+        date: recordToSave.date,
+        status: recordToSave.status || 'PRESENT',
+        site_id: recordToSave.site_id,
+        site_ids: recordToSave.site_ids,
+        ot_hours: recordToSave.ot_hours,
+        late_hours: recordToSave.late_hours,
+        late_minutes: recordToSave.late_minutes,
+        labour_count: recordToSave.labour_count,
+        remarks: recordToSave.remarks,
+        updated_at: new Date().toISOString(),
+      };
+
+      let { data, error } = await client
         .from('attendance_records')
-        .upsert([{
-          employee_id: recordToSave.employee_id,
-          date: recordToSave.date,
-          status: recordToSave.status || 'PRESENT',
-          site_id: recordToSave.site_id,
-          site_ids: recordToSave.site_ids,
-          ot_hours: recordToSave.ot_hours,
-          late_hours: recordToSave.late_hours,
-          late_minutes: recordToSave.late_minutes,
-          labour_count: recordToSave.labour_count,
-          remarks: recordToSave.remarks,
-          updated_at: new Date().toISOString(),
-        }], { onConflict: 'employee_id,date' })
+        .upsert([payloadItem], { onConflict: 'employee_id,date' })
         .select()
         .single();
+
+      if (error) {
+        console.warn('Online DB saveAttendanceRecord retry without site_ids:', error.message);
+        const { site_ids, ...fallbackItem } = payloadItem;
+        const retryRes = await client
+          .from('attendance_records')
+          .upsert([fallbackItem], { onConflict: 'employee_id,date' })
+          .select()
+          .single();
+        data = retryRes.data;
+        error = retryRes.error;
+      }
 
       if (!error && data) {
         return {
           ...data,
-          site_ids: resolvedSiteIds,
+          date: normalizeDateStr(data.date) || data.date,
+          site_ids: getRecordSiteIds(data).length > 0 ? getRecordSiteIds(data) : resolvedSiteIds,
           ot_hours: Number(data.ot_hours) || 0,
           late_hours: Number(data.late_hours) || 0,
           late_minutes: Number(data.late_minutes) || 0,
@@ -396,7 +486,7 @@ export class DataService {
       }
     }
 
-    throw new Error('Invalid employee UUID or missing date for online database attendance save');
+    throw new Error('Invalid employee ID or missing date for online database attendance save');
   }
 
   static async bulkSaveAttendance(records: Partial<AttendanceRecord>[]): Promise<void> {
@@ -416,13 +506,11 @@ export class DataService {
             empUuid = r.employee_id;
           } else {
             const empMatch = employees.find(e => e.id === r.employee_id || e.emp_id === r.employee_id);
-            if (empMatch && isValidUuid(empMatch.id)) empUuid = empMatch.id;
+            if (empMatch) empUuid = empMatch.id;
           }
         }
 
-        const rawSiteIds = r.site_ids && Array.isArray(r.site_ids)
-          ? r.site_ids
-          : (r.site_id ? [r.site_id] : []);
+        const rawSiteIds = getRecordSiteIds(r);
 
         const resolvedSiteIds: string[] = [];
         rawSiteIds.forEach((sId) => {
@@ -430,15 +518,21 @@ export class DataService {
             resolvedSiteIds.push(sId);
           } else {
             const siteMatch = sites.find(s => s.id === sId || s.code === sId || s.name === sId);
-            if (siteMatch && isValidUuid(siteMatch.id)) resolvedSiteIds.push(siteMatch.id);
+            if (siteMatch) {
+              resolvedSiteIds.push(siteMatch.id);
+            } else if (sId) {
+              resolvedSiteIds.push(sId);
+            }
           }
         });
 
+        const normDate = normalizeDateStr(r.date) || r.date;
+
         return {
           employee_id: empUuid || r.employee_id,
-          date: r.date,
+          date: normDate,
           status: r.status || 'PRESENT',
-          site_id: resolvedSiteIds.length > 0 ? resolvedSiteIds[0] : null,
+          site_id: resolvedSiteIds.length > 0 ? resolvedSiteIds[0] : (r.site_id || null),
           site_ids: resolvedSiteIds,
           ot_hours: Number(r.ot_hours) || 0,
           late_hours: Number(r.late_hours) || 0,
@@ -447,16 +541,23 @@ export class DataService {
           remarks: r.remarks || null,
           updated_at: new Date().toISOString(),
         };
-      }).filter(r => isValidUuid(r.employee_id) && r.date);
+      }).filter((r) => Boolean(r.employee_id) && Boolean(r.date));
 
       if (payload.length > 0) {
-        const { error } = await client
+        let { error } = await client
           .from('attendance_records')
           .upsert(payload, { onConflict: 'employee_id,date' });
 
         if (error) {
-          console.error('Online DB bulkSaveAttendance error:', error);
-          throw error;
+          console.warn('Online DB bulkSaveAttendance initial error, retrying without site_ids column:', error.message);
+          const fallbackPayload = payload.map(({ site_ids, ...rest }) => rest);
+          const retryRes = await client
+            .from('attendance_records')
+            .upsert(fallbackPayload, { onConflict: 'employee_id,date' });
+          if (retryRes.error) {
+            console.error('Online DB bulkSaveAttendance error after fallback:', retryRes.error);
+            throw retryRes.error;
+          }
         }
       }
     }
