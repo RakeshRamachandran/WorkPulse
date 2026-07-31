@@ -281,12 +281,15 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
   const handleStatusChange = (empId: string, status: string) => {
     const current = draftRecords[empId] || {};
     const curSiteIds = getRecordSiteIds(current);
-    const isAbsentOrHoliday = status === 'LEAVE' || status === 'HOLIDAY';
+    const isLeave = status === 'LEAVE';
+    const isHoliday = status === 'HOLIDAY';
     updateLocalRecord(empId, {
       status: status as AttendanceStatus,
-      site_id: isAbsentOrHoliday ? null : (curSiteIds[0] || null),
-      site_ids: isAbsentOrHoliday ? [] : curSiteIds,
-      ot_hours: isAbsentOrHoliday ? 0 : (current.ot_hours || 0),
+      site_id: isLeave ? null : (curSiteIds[0] || null),
+      site_ids: isLeave ? [] : curSiteIds,
+      ot_hours: isLeave ? 0 : (current.ot_hours || 0),
+      late_hours: (isLeave || isHoliday) ? 0 : (current.late_hours || 0),
+      late_minutes: (isLeave || isHoliday) ? 0 : (current.late_minutes || 0),
     });
   };
 
@@ -342,14 +345,15 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
       const next = { ...prev };
       visibleEmployees.forEach((emp) => {
         const cur = next[emp.id] || {};
+        const curSiteIds = getRecordSiteIds(cur);
         next[emp.id] = {
           ...cur,
           employee_id: emp.id,
           date: dateStr,
           status: 'HOLIDAY',
-          site_ids: [],
-          site_id: null,
-          ot_hours: 0,
+          site_ids: curSiteIds,
+          site_id: curSiteIds[0] || null,
+          ot_hours: cur.ot_hours || 0,
           remarks: 'Sunday Weekly Off',
         };
       });
@@ -716,7 +720,8 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
                   const currentOT = rec.ot_hours || 0;
                   const currentLateMins = rec.late_minutes || 0;
                   const currentLabourCount = rec.labour_count || 0;
-                  const isAbsentOrHoliday = currentStatus === 'LEAVE' || currentStatus === 'HOLIDAY';
+                  const isLeave = currentStatus === 'LEAVE';
+                  const isHoliday = currentStatus === 'HOLIDAY';
 
                   return (
                     <tr key={emp.id} className="hover:bg-[#F9FBFA] transition-colors duration-150">
@@ -750,8 +755,8 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
 
                       {/* Site Multi-Select */}
                       <td className="py-3 px-5 min-w-[280px]">
-                        {isAbsentOrHoliday ? (
-                          <span className="text-[14px] text-[#6B7280] italic">N/A ({currentStatus === 'HOLIDAY' ? 'HL' : 'L'})</span>
+                        {isLeave ? (
+                          <span className="text-[14px] text-[#6B7280] italic">N/A (L)</span>
                         ) : (
                           <MultiSiteSelect
                             sites={sites}
@@ -765,7 +770,7 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
                       {/* Labours — Contractors only */}
                       {activeSection === 'contractors' && (
                         <td className="py-3 px-5 text-center">
-                          {isAbsentOrHoliday ? (
+                          {isLeave ? (
                             <span className="text-[14px] text-[#6B7280]">-</span>
                           ) : (
                             <input
@@ -790,7 +795,7 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
 
                       {/* OT Input */}
                       <td className="py-3 px-5 text-center">
-                        {isAbsentOrHoliday ? (
+                        {isLeave ? (
                           <span className="text-[14px] text-[#6B7280]">-</span>
                         ) : (
                           <input
@@ -816,7 +821,7 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
                       {/* Late Arrival (Hours & Minutes Selectors) — Employees only */}
                       {activeSection === 'employees' && (
                         <td className="py-3 px-5 text-center min-w-[200px]">
-                          {isAbsentOrHoliday ? (
+                          {isLeave || isHoliday ? (
                             <span className="text-[14px] text-[#6B7280]">-</span>
                           ) : (
                             <div className="flex items-center space-x-1.5 justify-center min-w-[190px]">
