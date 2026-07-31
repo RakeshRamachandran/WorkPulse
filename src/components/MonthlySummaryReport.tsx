@@ -209,18 +209,6 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
       s.lateFormatted,
     ]);
 
-    tableData.push([
-      'TOTAL',
-      `${totalEmployees} Staff`,
-      totalWorkingDaysAll.toString(),
-      totalLeaveDaysAll.toString(),
-      '-',
-      totalRegularHoursAll.toString(),
-      totalOTHoursAll.toString(),
-      totalHoursAll.toString(),
-      `${Math.floor(totalLateMinsAll / 60)}h ${totalLateMinsAll % 60}m`,
-    ]);
-
     autoTable(doc, {
       startY: 38,
       head: [

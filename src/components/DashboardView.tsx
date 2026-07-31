@@ -210,17 +210,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       s.lateFormatted,
     ]);
 
-    tableData.push([
-      'TOTAL',
-      `${totalEmployees} Employees`,
-      totalWorkingDaysAll.toString(),
-      totalLeaveDaysAll.toString(),
-      totalRegularHoursAll.toString(),
-      totalOTHoursAll.toString(),
-      totalHoursAll.toString(),
-      `${Math.floor(totalLateMinsAll / 60)}h ${totalLateMinsAll % 60}m`,
-    ]);
-
     autoTable(doc, {
       startY: 38,
       head: [
