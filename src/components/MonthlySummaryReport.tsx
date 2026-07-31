@@ -165,26 +165,35 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
 
     // Top Header Banner
     doc.setFillColor(22, 163, 74);
-    doc.rect(0, 0, 210, 32, 'F');
+    doc.rect(0, 0, 210, 34, 'F');
 
     // Add Logo Card if loaded
     if (logoImg) {
       doc.setFillColor(255, 255, 255);
-      doc.roundedRect(10, 5, 48, 22, 2, 2, 'F');
-      doc.addImage(logoImg, 'PNG', 12, 7, 44, 18);
+      doc.roundedRect(10, 5, 48, 24, 2, 2, 'F');
+      doc.addImage(logoImg, 'PNG', 12, 7, 44, 20);
     }
 
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(15);
+    doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text('Venkateswara Electricals', logoImg ? 64 : 14, 14);
+    doc.text('Venkateswara Electricals', logoImg ? 64 : 14, 12);
 
-    doc.setFontSize(10);
+    doc.setFontSize(9.5);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Monthly Attendance Summary - ${monthName}`, logoImg ? 64 : 14, 22);
+    doc.text(`Monthly Attendance Summary - ${monthName}`, logoImg ? 64 : 14, 19);
 
     doc.setFontSize(8.5);
-    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 155, 22);
+    doc.setFont('helvetica', 'normal');
+    doc.text(
+      `Total Working Days: ${netWorkingDays}    |    Total Holidays: ${totalHolidaysInMonth}`,
+      logoImg ? 64 : 14,
+      26
+    );
+
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 196, 12, { align: 'right' });
 
     const tableData = filteredSummaries.map((s) => [
       s.employee.emp_id,
@@ -211,7 +220,7 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
     ]);
 
     autoTable(doc, {
-      startY: 36,
+      startY: 38,
       head: [
         ['Emp ID', 'Employee', 'Work Days', 'Leave Days', 'Holiday', 'Regular Hours', 'OT Hours', 'Total Hours', 'Late Time'],
       ],
