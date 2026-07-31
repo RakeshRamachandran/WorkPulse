@@ -199,8 +199,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     doc.setFont('helvetica', 'normal');
     doc.text(`Generated: ${new Date().toLocaleDateString()}`, 196, 12, { align: 'right' });
 
-    const tableData = filteredSummaries.map((s) => [
-      s.employee.emp_id,
+    const tableData = filteredSummaries.map((s, index) => [
+      (index + 1).toString(),
       s.employee.name,
       s.workingDays.toString(),
       s.leaveDays.toString(),
@@ -213,7 +213,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     autoTable(doc, {
       startY: 38,
       head: [
-        ['Emp ID', 'Employee Name', 'Work Days', 'Leave Days', 'Regular Hours', 'OT Hours', 'Total Hours', 'Late Time'],
+        ['Sl No', 'Employee Name', 'Work Days', 'Leave Days', 'Regular Hours', 'OT Hours', 'Total Hours', 'Late Time'],
       ],
       body: tableData,
       theme: 'grid',
@@ -228,7 +228,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         cellPadding: 2.5,
       },
       columnStyles: {
-        0: { fontStyle: 'bold' },
+        0: { halign: 'center' },
         2: { halign: 'center' },
         3: { halign: 'center' },
         4: { halign: 'center' },
