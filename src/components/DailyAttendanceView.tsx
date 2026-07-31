@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import type { Employee, Site, AttendanceRecord, AttendanceStatus } from '../types';
 import { getRecordSiteIds, isSubcontractor } from '../types';
@@ -179,6 +179,132 @@ interface DailyAttendanceViewProps {
 
 type ActiveSection = 'employees' | 'contractors';
 
+interface OTInputProps {
+  value: number;
+  onChange: (val: number) => void;
+  disabled?: boolean;
+}
+
+const OTInput: React.FC<OTInputProps> = ({ value, onChange, disabled }) => {
+  const [text, setText] = useState<string>(value === 0 ? '' : String(value));
+
+  useEffect(() => {
+    setText(value === 0 ? '' : String(value));
+  }, [value]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
+      setText(raw);
+      if (raw === '' || raw === '.') {
+        onChange(0);
+      } else {
+        const num = parseFloat(raw);
+        if (!isNaN(num)) {
+          onChange(Math.min(16, Math.max(0, num)));
+        }
+      }
+    }
+  };
+
+  const handleBlur = () => {
+    if (text === '' || text === '.') {
+      setText('');
+      onChange(0);
+    } else {
+      const num = parseFloat(text);
+      if (!isNaN(num)) {
+        const clamped = Math.min(16, Math.max(0, num));
+        setText(clamped === 0 ? '' : String(clamped));
+        onChange(clamped);
+      } else {
+        setText('');
+        onChange(0);
+      }
+    }
+  };
+
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      placeholder="0"
+      disabled={disabled}
+      value={text}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      onFocus={(e) => e.target.select()}
+      className={`w-20 h-[40px] border text-center font-semibold text-[14px] rounded-[10px] focus:outline-none focus:ring-2 focus:bg-white transition ${value > 0
+        ? 'bg-emerald-50 border-emerald-300 text-emerald-700 focus:ring-emerald-400'
+        : 'bg-[#F8FAFC] border-[#E5E7EB] text-[#111827] focus:ring-[#16A34A]'
+        }`}
+    />
+  );
+};
+
+interface LabourCountInputProps {
+  value: number;
+  onChange: (val: number) => void;
+  disabled?: boolean;
+}
+
+const LabourCountInput: React.FC<LabourCountInputProps> = ({ value, onChange, disabled }) => {
+  const [text, setText] = useState<string>(value === 0 ? '' : String(value));
+
+  useEffect(() => {
+    setText(value === 0 ? '' : String(value));
+  }, [value]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    if (raw === '' || /^\d*$/.test(raw)) {
+      setText(raw);
+      if (raw === '') {
+        onChange(0);
+      } else {
+        const num = parseInt(raw, 10);
+        if (!isNaN(num)) {
+          onChange(Math.min(100, Math.max(0, num)));
+        }
+      }
+    }
+  };
+
+  const handleBlur = () => {
+    if (text === '') {
+      setText('');
+      onChange(0);
+    } else {
+      const num = parseInt(text, 10);
+      if (!isNaN(num)) {
+        const clamped = Math.min(100, Math.max(0, num));
+        setText(clamped === 0 ? '' : String(clamped));
+        onChange(clamped);
+      } else {
+        setText('');
+        onChange(0);
+      }
+    }
+  };
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      placeholder="0"
+      disabled={disabled}
+      value={text}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      onFocus={(e) => e.target.select()}
+      className={`w-20 h-[40px] border text-center font-semibold text-[14px] rounded-[10px] focus:outline-none focus:ring-2 focus:bg-white transition ${value > 0
+        ? 'bg-orange-50 border-orange-300 text-orange-700 focus:ring-orange-400'
+        : 'bg-[#F8FAFC] border-[#E5E7EB] text-[#111827] focus:ring-[#16A34A]'
+        }`}
+    />
+  );
+};
+
 export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
   selectedYear,
   selectedMonth,
@@ -211,7 +337,10 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
   // Local draft records state
   const [draftRecords, setDraftRecords] = useState<Record<string, Partial<AttendanceRecord>>>({});
 
-  const activeEmployees = employees.filter((emp) => emp.is_active !== false);
+  const activeEmployees = useMemo(
+    () => employees.filter((emp) => emp.is_active !== false),
+    [employees]
+  );
 
   useEffect(() => {
     const map: Record<string, Partial<AttendanceRecord>> = {};
@@ -306,11 +435,19 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
   };
 
   const handleOTChange = (empId: string, otHours: number) => {
-    updateLocalRecord(empId, { ot_hours: otHours });
+    const current = draftRecords[empId] || {};
+    const newStatus = (!current.status || current.status.trim() === '') ? 'PRESENT' : current.status;
+    updateLocalRecord(empId, {
+      status: newStatus as AttendanceStatus,
+      ot_hours: otHours,
+    });
   };
 
   const handleLateTimeChange = (empId: string, lateMins: number) => {
+    const current = draftRecords[empId] || {};
+    const newStatus = (!current.status || current.status.trim() === '') ? 'PRESENT' : current.status;
     updateLocalRecord(empId, {
+      status: newStatus as AttendanceStatus,
       late_hours: Math.floor(lateMins / 60),
       late_minutes: lateMins,
       remarks: lateMins > 0 ? `Late arrival ${lateMins} mins` : undefined,
@@ -318,7 +455,12 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
   };
 
   const handleLabourCountChange = (empId: string, count: number) => {
-    updateLocalRecord(empId, { labour_count: count });
+    const current = draftRecords[empId] || {};
+    const newStatus = (!current.status || current.status.trim() === '') ? 'PRESENT' : current.status;
+    updateLocalRecord(empId, {
+      status: newStatus as AttendanceStatus,
+      labour_count: count,
+    });
   };
 
   const handleBulkMarkPresent = () => {
@@ -720,7 +862,9 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
                   const currentStatus: string = rec.status || '';
                   const currentSiteIds = getRecordSiteIds(rec);
                   const currentOT = rec.ot_hours || 0;
-                  const currentLateMins = rec.late_minutes || 0;
+                  const currentLateMins = (rec.late_minutes && rec.late_minutes > 0)
+                    ? rec.late_minutes
+                    : ((rec.late_hours || 0) * 60);
                   const currentLabourCount = rec.labour_count || 0;
                   const isLeave = currentStatus === 'LEAVE';
                   const isHoliday = currentStatus === 'HOLIDAY';
@@ -775,21 +919,9 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
                           {isLeave ? (
                             <span className="text-[14px] text-[#6B7280]">-</span>
                           ) : (
-                            <input
-                              type="number"
-                              min="0"
-                              max="100"
-                              placeholder="0"
-                              value={currentLabourCount === 0 ? '' : currentLabourCount}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                handleLabourCountChange(emp.id, val === '' ? 0 : Math.max(0, parseInt(val, 10) || 0));
-                              }}
-                              onFocus={(e) => e.target.select()}
-                              className={`w-20 h-[40px] border text-center font-semibold text-[14px] rounded-[10px] focus:outline-none focus:ring-2 focus:bg-white transition ${currentLabourCount > 0
-                                ? 'bg-orange-50 border-orange-300 text-orange-700 focus:ring-orange-400'
-                                : 'bg-[#F8FAFC] border-[#E5E7EB] text-[#111827] focus:ring-[#16A34A]'
-                                }`}
+                            <LabourCountInput
+                              value={currentLabourCount}
+                              onChange={(count) => handleLabourCountChange(emp.id, count)}
                             />
                           )}
                         </td>
@@ -800,22 +932,9 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
                         {isLeave ? (
                           <span className="text-[14px] text-[#6B7280]">-</span>
                         ) : (
-                          <input
-                            type="number"
-                            min="0"
-                            max="16"
-                            step="0.5"
-                            placeholder="0"
-                            value={currentOT === 0 ? '' : currentOT}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              handleOTChange(emp.id, val === '' ? 0 : Math.max(0, parseFloat(val) || 0));
-                            }}
-                            onFocus={(e) => e.target.select()}
-                            className={`w-20 h-[40px] border text-center font-semibold text-[14px] rounded-[10px] focus:outline-none focus:ring-2 focus:bg-white transition ${currentOT > 0
-                              ? 'bg-emerald-50 border-emerald-300 text-emerald-700 focus:ring-emerald-400'
-                              : 'bg-[#F8FAFC] border-[#E5E7EB] text-[#111827] focus:ring-[#16A34A]'
-                              }`}
+                          <OTInput
+                            value={currentOT}
+                            onChange={(ot) => handleOTChange(emp.id, ot)}
                           />
                         )}
                       </td>
