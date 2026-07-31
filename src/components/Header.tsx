@@ -69,11 +69,10 @@ export const Sidebar: React.FC<{
           {/* Dashboard */}
           <button
             onClick={() => handleNavClick('dashboard')}
-            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 cursor-pointer ${
-              activeTab === 'dashboard'
+            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 cursor-pointer ${activeTab === 'dashboard'
                 ? 'bg-emerald-50 text-[#16a34a] font-bold border-r-4 border-[#16a34a] shadow-xs'
                 : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-semibold'
-            }`}
+              }`}
           >
             <LayoutDashboard className={`w-4 h-4 shrink-0 ${activeTab === 'dashboard' ? 'text-[#16a34a]' : 'text-slate-400'}`} />
             <span>Dashboard</span>
@@ -84,11 +83,10 @@ export const Sidebar: React.FC<{
           {/* Attendance Operations */}
           <button
             onClick={() => handleNavClick('daily')}
-            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 cursor-pointer ${
-              activeTab === 'daily'
+            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 cursor-pointer ${activeTab === 'daily'
                 ? 'bg-emerald-50 text-[#16a34a] font-bold border-r-4 border-[#16a34a] shadow-xs'
                 : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-semibold'
-            }`}
+              }`}
           >
             <Calendar className={`w-4 h-4 shrink-0 ${activeTab === 'daily' ? 'text-[#16a34a]' : 'text-slate-400'}`} />
             <span>Daily Attendance</span>
@@ -96,11 +94,10 @@ export const Sidebar: React.FC<{
 
           <button
             onClick={() => handleNavClick('summary')}
-            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 cursor-pointer ${
-              activeTab === 'summary'
+            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 cursor-pointer ${activeTab === 'summary'
                 ? 'bg-emerald-50 text-[#16a34a] font-bold border-r-4 border-[#16a34a] shadow-xs'
                 : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-semibold'
-            }`}
+              }`}
           >
             <FileSpreadsheet className={`w-4 h-4 shrink-0 ${activeTab === 'summary' ? 'text-[#16a34a]' : 'text-slate-400'}`} />
             <span>Monthly Summary</span>
@@ -108,11 +105,10 @@ export const Sidebar: React.FC<{
 
           <button
             onClick={() => handleNavClick('matrix')}
-            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 cursor-pointer ${
-              activeTab === 'matrix'
+            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 cursor-pointer ${activeTab === 'matrix'
                 ? 'bg-emerald-50 text-[#16a34a] font-bold border-r-4 border-[#16a34a] shadow-xs'
                 : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-semibold'
-            }`}
+              }`}
           >
             <Grid className={`w-4 h-4 shrink-0 ${activeTab === 'matrix' ? 'text-[#16a34a]' : 'text-slate-400'}`} />
             <span>Attendance Matrix</span>
@@ -123,11 +119,10 @@ export const Sidebar: React.FC<{
           {/* Master Management */}
           <button
             onClick={() => handleNavClick('sites')}
-            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 cursor-pointer ${
-              activeTab === 'sites'
+            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 cursor-pointer ${activeTab === 'sites'
                 ? 'bg-emerald-50 text-[#16a34a] font-bold border-r-4 border-[#16a34a] shadow-xs'
                 : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-semibold'
-            }`}
+              }`}
           >
             <Building className={`w-4 h-4 shrink-0 ${activeTab === 'sites' ? 'text-[#16a34a]' : 'text-slate-400'}`} />
             <span>Site Locations</span>
@@ -135,11 +130,10 @@ export const Sidebar: React.FC<{
 
           <button
             onClick={() => handleNavClick('masters')}
-            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 cursor-pointer ${
-              activeTab === 'masters'
+            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 cursor-pointer ${activeTab === 'masters'
                 ? 'bg-emerald-50 text-[#16a34a] font-bold border-r-4 border-[#16a34a] shadow-xs'
                 : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-semibold'
-            }`}
+              }`}
           >
             <Users className={`w-4 h-4 shrink-0 ${activeTab === 'masters' ? 'text-[#16a34a]' : 'text-slate-400'}`} />
             <span>Employee Roster</span>
@@ -313,11 +307,10 @@ export const Header: React.FC<HeaderProps> = ({
             type="button"
             onClick={onRefreshData}
             disabled={isRefreshing}
-            className={`flex items-center space-x-1.5 text-[11px] sm:text-xs font-bold px-2.5 py-1.5 rounded-xl border transition-all shadow-xs cursor-pointer ${
-              isRefreshing
+            className={`flex items-center space-x-1.5 text-[11px] sm:text-xs font-bold px-2.5 py-1.5 rounded-xl border transition-all shadow-xs cursor-pointer ${isRefreshing
                 ? 'bg-emerald-50 text-[#16a34a] border-emerald-300'
                 : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-emerald-50 hover:text-[#16a34a] hover:border-emerald-200'
-            } disabled:opacity-60`}
+              } disabled:opacity-60`}
             title="Sync & refresh latest data from database"
           >
             <RefreshCw className={`w-3.5 h-3.5 shrink-0 ${isRefreshing ? 'animate-spin text-[#16a34a]' : 'text-slate-500'}`} />
@@ -328,11 +321,10 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Supabase Storage Pill */}
         <button
           onClick={onOpenSupabaseModal}
-          className={`flex items-center space-x-1.5 text-[11px] sm:text-xs font-bold px-2.5 py-1.5 rounded-xl border transition-all shadow-xs cursor-pointer ${
-            supabaseConfig.isConnected
+          className={`flex items-center space-x-1.5 text-[11px] sm:text-xs font-bold px-2.5 py-1.5 rounded-xl border transition-all shadow-xs cursor-pointer ${supabaseConfig.isConnected
               ? 'bg-emerald-50 text-[#16a34a] border-emerald-200 hover:bg-emerald-100'
               : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
-          }`}
+            }`}
           title="Click to view database connection status"
         >
           <Database className={`w-3.5 h-3.5 ${supabaseConfig.isConnected ? 'text-[#16a34a]' : 'text-amber-600'} shrink-0`} />

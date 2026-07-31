@@ -75,11 +75,10 @@ export const MasterDataManager: React.FC<MasterDataManagerProps> = ({
         <div className="flex space-x-3">
           <button
             onClick={() => setActiveSubTab('employees')}
-            className={`h-[40px] flex items-center space-x-2 px-4 rounded-[10px] font-semibold text-[14px] transition-all duration-200 cursor-pointer ${
-              activeSubTab === 'employees'
+            className={`h-[40px] flex items-center space-x-2 px-4 rounded-[10px] font-semibold text-[14px] transition-all duration-200 cursor-pointer ${activeSubTab === 'employees'
                 ? 'bg-[#E8F7EE] text-[#16A34A] border border-[#16A34A]/30 shadow-xs'
                 : 'text-[#6B7280] hover:text-[#111827] hover:bg-[#F8FAFC]'
-            }`}
+              }`}
           >
             <Users className="w-4 h-4" />
             <span>Direct Employees ({directEmployees.length})</span>
@@ -87,11 +86,10 @@ export const MasterDataManager: React.FC<MasterDataManagerProps> = ({
 
           <button
             onClick={() => setActiveSubTab('subcontractors')}
-            className={`h-[40px] flex items-center space-x-2 px-4 rounded-[10px] font-semibold text-[14px] transition-all duration-200 cursor-pointer ${
-              activeSubTab === 'subcontractors'
+            className={`h-[40px] flex items-center space-x-2 px-4 rounded-[10px] font-semibold text-[14px] transition-all duration-200 cursor-pointer ${activeSubTab === 'subcontractors'
                 ? 'bg-amber-50 text-[#F59E0B] border border-amber-200 shadow-xs'
                 : 'text-[#6B7280] hover:text-[#111827] hover:bg-[#F8FAFC]'
-            }`}
+              }`}
           >
             <HardHat className="w-4 h-4" />
             <span>Subcontractors ({subcontractors.length})</span>
@@ -148,13 +146,12 @@ export const MasterDataManager: React.FC<MasterDataManagerProps> = ({
                   {/* Category Badge */}
                   <td className="py-2.5 px-5 text-center">
                     <span
-                      className={`text-[12px] px-3 py-0.5 rounded-full font-medium border ${
-                        emp.category === 'Engineer'
+                      className={`text-[12px] px-3 py-0.5 rounded-full font-medium border ${emp.category === 'Engineer'
                           ? 'bg-blue-50 text-blue-700 border-blue-200'
                           : emp.category === 'Subcontractor' || emp.designation === 'Subcontractor'
-                          ? 'bg-amber-50 text-[#F59E0B] border-amber-200'
-                          : 'bg-[#E8F7EE] text-[#16A34A] border-[#16A34A]/30'
-                      }`}
+                            ? 'bg-amber-50 text-[#F59E0B] border-amber-200'
+                            : 'bg-[#E8F7EE] text-[#16A34A] border-[#16A34A]/30'
+                        }`}
                     >
                       {emp.category || emp.designation}
                     </span>

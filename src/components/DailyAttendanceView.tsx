@@ -118,8 +118,8 @@ export const StatusSelect: React.FC<StatusSelectProps> = ({ value, onChange }) =
         type="button"
         onClick={handleToggle}
         className={`h-[38px] px-3.5 rounded-[10px] border flex items-center justify-center space-x-1.5 font-bold text-[14px] shadow-xs cursor-pointer transition-all ${activeItem
-            ? activeItem.color
-            : 'bg-[#F8FAFC] text-[#6B7280] border-[#E5E7EB] hover:bg-slate-100'
+          ? activeItem.color
+          : 'bg-[#F8FAFC] text-[#6B7280] border-[#E5E7EB] hover:bg-slate-100'
           }`}
         title={activeItem ? activeItem.label : 'Select Status'}
       >
@@ -149,8 +149,8 @@ export const StatusSelect: React.FC<StatusSelectProps> = ({ value, onChange }) =
                   setIsOpen(false);
                 }}
                 className={`w-full text-left px-3 py-2 rounded-[8px] text-[13px] font-bold flex items-center space-x-2.5 transition cursor-pointer ${value === item.value
-                    ? 'bg-slate-100 text-[#111827]'
-                    : 'hover:bg-[#F8FAFC] text-[#374151]'
+                  ? 'bg-slate-100 text-[#111827]'
+                  : 'hover:bg-[#F8FAFC] text-[#374151]'
                   }`}
               >
                 <span className={`w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-bold text-white shrink-0 ${item.color.split(' ')[0]}`}>
@@ -598,8 +598,8 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
           <button
             onClick={() => { setActiveSection('employees'); setSearchQuery(''); setFilterCategory('ALL'); setFilterSiteId('ALL'); }}
             className={`flex-1 flex items-center justify-center space-x-2.5 py-3.5 text-[14px] font-semibold transition-all duration-150 border-b-2 ${activeSection === 'employees'
-                ? 'border-[#16A34A] text-[#16A34A] bg-[#F0FDF4]'
-                : 'border-transparent text-[#6B7280] hover:text-[#111827] hover:bg-[#F8FAFC]'
+              ? 'border-[#16A34A] text-[#16A34A] bg-[#F0FDF4]'
+              : 'border-transparent text-[#6B7280] hover:text-[#111827] hover:bg-[#F8FAFC]'
               }`}
           >
             <Users className="w-4 h-4 shrink-0" />
@@ -614,8 +614,8 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
           <button
             onClick={() => { setActiveSection('contractors'); setSearchQuery(''); setFilterCategory('ALL'); setFilterSiteId('ALL'); }}
             className={`flex-1 flex items-center justify-center space-x-2.5 py-3.5 text-[14px] font-semibold transition-all duration-150 border-b-2 ${activeSection === 'contractors'
-                ? 'border-orange-500 text-orange-600 bg-orange-50'
-                : 'border-transparent text-[#6B7280] hover:text-[#111827] hover:bg-[#F8FAFC]'
+              ? 'border-orange-500 text-orange-600 bg-orange-50'
+              : 'border-transparent text-[#6B7280] hover:text-[#111827] hover:bg-[#F8FAFC]'
               }`}
           >
             <HardHat className="w-4 h-4 shrink-0" />
@@ -723,8 +723,8 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
                       {/* Emp ID Pill Badge */}
                       <td className="py-3 px-5">
                         <span className={`px-3 py-1 rounded-full text-[12px] font-medium inline-block ${activeSection === 'contractors'
-                            ? 'bg-orange-50 text-orange-600'
-                            : 'bg-[#E8F7EE] text-[#16A34A]'
+                          ? 'bg-orange-50 text-orange-600'
+                          : 'bg-[#E8F7EE] text-[#16A34A]'
                           }`}>
                           {emp.emp_id}
                         </span>
@@ -780,8 +780,8 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
                               }}
                               onFocus={(e) => e.target.select()}
                               className={`w-20 h-[40px] border text-center font-semibold text-[14px] rounded-[10px] focus:outline-none focus:ring-2 focus:bg-white transition ${currentLabourCount > 0
-                                  ? 'bg-orange-50 border-orange-300 text-orange-700 focus:ring-orange-400'
-                                  : 'bg-[#F8FAFC] border-[#E5E7EB] text-[#111827] focus:ring-[#16A34A]'
+                                ? 'bg-orange-50 border-orange-300 text-orange-700 focus:ring-orange-400'
+                                : 'bg-[#F8FAFC] border-[#E5E7EB] text-[#111827] focus:ring-[#16A34A]'
                                 }`}
                             />
                           )}
@@ -806,8 +806,8 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
                             }}
                             onFocus={(e) => e.target.select()}
                             className={`w-20 h-[40px] border text-center font-semibold text-[14px] rounded-[10px] focus:outline-none focus:ring-2 focus:bg-white transition ${currentOT > 0
-                                ? 'bg-emerald-50 border-emerald-300 text-emerald-700 focus:ring-emerald-400'
-                                : 'bg-[#F8FAFC] border-[#E5E7EB] text-[#111827] focus:ring-[#16A34A]'
+                              ? 'bg-emerald-50 border-emerald-300 text-emerald-700 focus:ring-emerald-400'
+                              : 'bg-[#F8FAFC] border-[#E5E7EB] text-[#111827] focus:ring-[#16A34A]'
                               }`}
                           />
                         )}
@@ -830,8 +830,8 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
                                     handleLateTimeChange(emp.id, hrs * 60 + mins);
                                   }}
                                   className={`w-full h-[40px] text-[13px] font-semibold pl-2.5 pr-6 rounded-[10px] border appearance-none cursor-pointer focus:outline-none transition ${currentLateMins > 0
-                                      ? 'bg-rose-50 text-[#EF4444] border-rose-200'
-                                      : 'bg-[#F8FAFC] text-[#111827] border-[#E5E7EB]'
+                                    ? 'bg-rose-50 text-[#EF4444] border-rose-200'
+                                    : 'bg-[#F8FAFC] text-[#111827] border-[#E5E7EB]'
                                     }`}
                                   title="Late Hours"
                                 >
@@ -858,17 +858,23 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
                                     handleLateTimeChange(emp.id, hrs * 60 + mins);
                                   }}
                                   className={`w-full h-[40px] text-[13px] font-semibold pl-2.5 pr-6 rounded-[10px] border appearance-none cursor-pointer focus:outline-none transition ${currentLateMins > 0
-                                      ? 'bg-rose-50 text-[#EF4444] border-rose-200'
-                                      : 'bg-[#F8FAFC] text-[#111827] border-[#E5E7EB]'
+                                    ? 'bg-rose-50 text-[#EF4444] border-rose-200'
+                                    : 'bg-[#F8FAFC] text-[#111827] border-[#E5E7EB]'
                                     }`}
                                   title="Late Minutes"
                                 >
                                   <option value="0">0 min</option>
+                                  <option value="5">5 mins</option>
                                   <option value="10">10 mins</option>
+                                  <option value="15">15 mins</option>
                                   <option value="20">20 mins</option>
+                                  <option value="25">25 mins</option>
                                   <option value="30">30 mins</option>
+                                  <option value="35">35 mins</option>
                                   <option value="40">40 mins</option>
+                                  <option value="45">45 mins</option>
                                   <option value="50">50 mins</option>
+                                  <option value="55">55 mins</option>
                                   <option value="60">60 mins</option>
                                 </select>
                                 <ChevronDown className="w-3.5 h-3.5 text-[#6B7280] absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -915,8 +921,8 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
               onClick={handleSaveAll}
               disabled={isSaving}
               className={`h-[40px] px-5 rounded-[10px] text-[13px] font-semibold shadow-xs transition-all duration-200 flex items-center space-x-2 cursor-pointer active:scale-95 shrink-0 ${hasUnsavedChanges
-                  ? 'bg-[#16A34A] hover:bg-[#15803D] text-white ring-2 ring-[#16A34A]/40'
-                  : 'bg-[#16A34A] hover:bg-[#15803D] text-white'
+                ? 'bg-[#16A34A] hover:bg-[#15803D] text-white ring-2 ring-[#16A34A]/40'
+                : 'bg-[#16A34A] hover:bg-[#15803D] text-white'
                 }`}
             >
               <Save className={`w-4 h-4 shrink-0 ${isSaving ? 'animate-spin' : ''}`} />
