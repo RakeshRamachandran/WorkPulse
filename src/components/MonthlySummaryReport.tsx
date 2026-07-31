@@ -43,8 +43,10 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
   const siteMap = new Map<string, Site>();
   sites.forEach((s) => siteMap.set(s.id, s));
 
-  // Calculate monthly stats per employee (direct employees only)
-  const summaries: MonthlyEmployeeSummary[] = employees
+  const activeEmployees = employees.filter((emp) => emp.is_active !== false);
+
+  // Calculate monthly stats per employee (active direct employees only)
+  const summaries: MonthlyEmployeeSummary[] = activeEmployees
     .filter((emp) => !isSubcontractor(emp))
     .map((emp) => {
       const empRecords = attendanceRecords.filter((r) => r.employee_id === emp.id);

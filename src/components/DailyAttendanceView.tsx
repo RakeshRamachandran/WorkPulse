@@ -211,12 +211,14 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
   // Local draft records state
   const [draftRecords, setDraftRecords] = useState<Record<string, Partial<AttendanceRecord>>>({});
 
+  const activeEmployees = employees.filter((emp) => emp.is_active !== false);
+
   useEffect(() => {
     const map: Record<string, Partial<AttendanceRecord>> = {};
     const dateObj = new Date(selectedYear, selectedMonth - 1, selectedDay);
     const isSunday = dateObj.getDay() === 0;
 
-    employees.forEach((emp) => {
+    activeEmployees.forEach((emp) => {
       const existing = attendanceRecords.find(
         (r) => (r.employee_id === emp.id || r.employee_id === emp.emp_id) && r.date === dateStr
       );
@@ -252,7 +254,7 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
     setDraftRecords(map);
     setHasUnsavedChanges(false);
     if (onUnsavedStatusChange) onUnsavedStatusChange(false);
-  }, [selectedYear, selectedMonth, selectedDay, employees, attendanceRecords]);
+  }, [selectedYear, selectedMonth, selectedDay, activeEmployees, attendanceRecords]);
 
   // Browser navigation unsaved guard
   useEffect(() => {
@@ -436,9 +438,9 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
     }
   };
 
-  // Split employees into regular staff (direct employees) vs contractors (subcontractors)
-  const regularEmployees = employees.filter((emp) => !isSubcontractor(emp));
-  const contractors = employees.filter((emp) => isSubcontractor(emp));
+  // Split active employees into regular staff (direct employees) vs contractors (subcontractors)
+  const regularEmployees = activeEmployees.filter((emp) => !isSubcontractor(emp));
+  const contractors = activeEmployees.filter((emp) => isSubcontractor(emp));
 
   // Current pool based on active tab
   const currentPool = activeSection === 'employees' ? regularEmployees : contractors;

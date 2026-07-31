@@ -44,8 +44,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const siteMap = new Map<string, Site>();
   sites.forEach((s) => siteMap.set(s.id, s));
 
-  // Compute monthly employee summaries (direct employees only)
-  const summaries: MonthlyEmployeeSummary[] = employees
+  const activeEmployees = employees.filter((emp) => emp.is_active !== false);
+
+  // Compute monthly employee summaries (active direct employees only)
+  const summaries: MonthlyEmployeeSummary[] = activeEmployees
     .filter((emp) => !isSubcontractor(emp))
     .map((emp) => {
       const empRecords = attendanceRecords.filter((r) => r.employee_id === emp.id);

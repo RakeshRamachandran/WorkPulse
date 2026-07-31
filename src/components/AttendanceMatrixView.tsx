@@ -60,7 +60,9 @@ export const AttendanceMatrixView: React.FC<AttendanceMatrixViewProps> = ({
     }
   });
 
-  const filteredEmployees = employees
+  const activeEmployees = employees.filter((emp) => emp.is_active !== false);
+
+  const filteredEmployees = activeEmployees
     .filter((emp) => !isSubcontractor(emp))
     .filter((emp) => {
       const matchesSearch =
