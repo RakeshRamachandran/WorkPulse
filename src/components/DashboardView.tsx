@@ -84,6 +84,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       const regularHours = workingDays * 8;
       const totalHours = regularHours + otHours;
+      const netWorkingMins = Math.max(0, regularHours * 60 - totalLateMinutes);
+      const netWorkingHours = parseFloat((netWorkingMins / 60).toFixed(2));
+      const netHrs = Math.floor(netWorkingMins / 60);
+      const netMins = netWorkingMins % 60;
+      const netWorkingHoursFormatted = netMins > 0 ? `${netHrs}h ${netMins}m` : `${netHrs}h`;
 
       const lateHrs = Math.floor(totalLateMinutes / 60);
       const lateMins = totalLateMinutes % 60;
@@ -100,6 +105,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         regularHours,
         otHours,
         totalHours,
+        netWorkingHours,
+        netWorkingHoursFormatted,
         totalLateMinutes,
         lateFormatted,
         siteDays,
@@ -148,6 +155,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const totalRegularHoursAll = filteredSummaries.reduce((acc, s) => acc + s.regularHours, 0);
   const totalOTHoursAll = filteredSummaries.reduce((acc, s) => acc + s.otHours, 0);
   const totalHoursAll = filteredSummaries.reduce((acc, s) => acc + s.totalHours, 0);
+  const totalNetMinsAll = filteredSummaries.reduce((acc, s) => acc + Math.max(0, s.regularHours * 60 - s.totalLateMinutes), 0);
+  const totalNetWorkingHoursAll = parseFloat((totalNetMinsAll / 60).toFixed(2));
+  const totalNetHrsAll = Math.floor(totalNetMinsAll / 60);
+  const totalNetMinsRemAll = totalNetMinsAll % 60;
+  const totalNetWorkingHoursFormatted = totalNetMinsRemAll > 0 ? `${totalNetHrsAll}h ${totalNetMinsRemAll}m` : `${totalNetHrsAll}h`;
   const totalLateMinsAll = filteredSummaries.reduce((acc, s) => acc + s.totalLateMinutes, 0);
   const totalLateHoursAll = (totalLateMinsAll / 60).toFixed(1);
 
@@ -184,11 +196,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     doc.text('Venkateswara Electricals', logoImg ? 64 : 14, 12);
 
     doc.setFontSize(9.5);
-    doc.setFont('helvetica', 'normal');
+    doc.setFont('helvetica', 'bold');
     doc.text(`Monthly Attendance Report - ${monthName}`, logoImg ? 64 : 14, 19);
 
     doc.setFontSize(8.5);
-    doc.setFont('helvetica', 'normal');
+    doc.setFont('helvetica', 'bold');
     doc.text(
       `Total Working Days: ${netWorkingDays}    |    Total Holidays: ${totalHolidaysInMonth}`,
       logoImg ? 64 : 14,
@@ -206,14 +218,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       s.leaveDays.toString(),
       s.regularHours.toString(),
       s.otHours.toString(),
-      s.totalHours.toString(),
       s.lateFormatted,
+      s.netWorkingHoursFormatted,
     ]);
 
     autoTable(doc, {
       startY: 38,
+      margin: { left: 10, right: 10 },
       head: [
-        ['Sl No', 'Employee Name', 'Work Days', 'Leave Days', 'Regular Hours', 'OT Hours', 'Total Hours', 'Late Time'],
+        ['Sl No', 'Employee Name', 'Work Days', 'Leave Days', 'Regular Hours', 'OT Hours', 'Late Time', 'Net Working\nHours\n(RH - LT)'],
       ],
       body: tableData,
       theme: 'grid',
@@ -221,22 +234,46 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         fillColor: [22, 163, 74],
         textColor: [255, 255, 255],
         fontStyle: 'bold',
-        fontSize: 9,
+        fontSize: 8.5,
+        halign: 'center',
+        valign: 'middle',
       },
       styles: {
         fontSize: 8,
-        cellPadding: 2.5,
+        cellPadding: 2,
         textColor: [0, 0, 0],
       },
       columnStyles: {
-        0: { halign: 'center' },
-        1: { fontStyle: 'bold' },
-        2: { halign: 'center', fontStyle: 'bold' },
-        3: { halign: 'center', fontStyle: 'bold' },
-        4: { halign: 'center' },
-        5: { halign: 'center', fontStyle: 'bold' },
-        6: { halign: 'center', fontStyle: 'bold' },
-        7: { halign: 'center', fontStyle: 'bold' },
+        0: { halign: 'center', cellWidth: 12 },
+        1: { fontStyle: 'bold', cellWidth: 42 },
+        2: { halign: 'center', fontStyle: 'bold', cellWidth: 20 },
+        3: { halign: 'center', fontStyle: 'bold', cellWidth: 20 },
+        4: { halign: 'center', fontStyle: 'bold', cellWidth: 22 },
+        5: { halign: 'center', fontStyle: 'bold', cellWidth: 20 },
+        6: { halign: 'center', fontStyle: 'bold', cellWidth: 22 },
+        7: { halign: 'center', fontStyle: 'bold', cellWidth: 32 },
+      },
+      didParseCell: (data) => {
+        if (data.section === 'head' && data.column.index === 7) {
+          data.cell.text = [' ', ' ', ' '];
+        }
+      },
+      didDrawCell: (data) => {
+        if (data.section === 'head' && data.column.index === 7) {
+          const centerX = data.cell.x + data.cell.width / 2;
+          doc.setFillColor(22, 163, 74);
+          doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
+
+          doc.setTextColor(255, 255, 255);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(8);
+          doc.text('Net Working', centerX, data.cell.y + 3.5, { align: 'center' });
+          doc.text('Hours', centerX, data.cell.y + 7.2, { align: 'center' });
+
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(7);
+          doc.text('(RH - LT)', centerX, data.cell.y + 10.8, { align: 'center' });
+        }
       },
     });
 
@@ -254,8 +291,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       'Leave Days': s.leaveDays,
       'Regular Hours': s.regularHours,
       'OT Hours': s.otHours,
-      'Total Work Hours': s.totalHours,
       'Late Time': s.lateFormatted,
+      'Net Working Hours (RH - LT)': s.netWorkingHoursFormatted,
     }));
 
     excelRows.push({
@@ -267,8 +304,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       'Leave Days': totalLeaveDaysAll,
       'Regular Hours': totalRegularHoursAll,
       'OT Hours': totalOTHoursAll,
-      'Total Work Hours': totalHoursAll,
       'Late Time': `${Math.floor(totalLateMinsAll / 60)}h ${totalLateMinsAll % 60}m`,
+      'Net Working Hours (RH - LT)': totalNetWorkingHoursFormatted,
     });
 
     const worksheet = XLSX.utils.json_to_sheet(excelRows);
@@ -418,16 +455,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 font-semibold border-b border-slate-200 h-12">
-                  <th className="py-3 px-5 w-28">Emp ID</th>
-                  <th className="py-3 px-5 min-w-[200px]">Employee Name</th>
-                  <th className="py-3 px-5 min-w-[150px]">Designation</th>
+                  <th className="py-3 px-5 w-28 text-center">Emp ID</th>
+                  <th className="py-3 px-5 min-w-[200px] text-center">Employee Name</th>
+                  <th className="py-3 px-5 min-w-[150px] text-center">Designation</th>
                   <th className="py-3 px-5 text-center">Work Days</th>
                   <th className="py-3 px-5 text-center">Leave Days</th>
-                  <th className="py-3 px-5 text-center">Reg Hours</th>
+                  <th className="py-3 px-5 text-center font-extrabold">Reg Hours</th>
                   <th className="py-3 px-5 text-center">OT Hours</th>
-                  <th className="py-3 px-5 text-center">Total Hours</th>
                   <th className="py-3 px-5 text-center">Late Hours</th>
-                  <th className="py-3 px-5">Assigned Sites</th>
+                  <th className="py-3 px-5 text-center">
+                    <div>Net Working Hours</div>
+                    <div className="text-[10px] font-normal normal-case text-slate-400">(RH - LT)</div>
+                  </th>
+                  <th className="py-3 px-5 text-center">Assigned Sites</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
@@ -466,7 +506,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       )}
                     </td>
 
-                    {/* Regular Hours (Green text) */}
+                    {/* Regular Hours (Green bold text) */}
                     <td className="py-3 px-5 text-center font-bold text-[#16a34a]">
                       {sum.regularHours}h
                     </td>
@@ -474,11 +514,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     {/* OT Hours (Orange text) */}
                     <td className="py-3 px-5 text-center font-extrabold text-amber-600">
                       {sum.otHours > 0 ? `+${sum.otHours}h` : '-'}
-                    </td>
-
-                    {/* Total Hours (Bold Green text) */}
-                    <td className="py-3 px-5 text-center font-black text-sm text-[#16a34a]">
-                      {sum.totalHours}h
                     </td>
 
                     {/* Late Hours (Red text) */}
@@ -490,6 +525,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       ) : (
                         <span className="text-slate-400 font-normal">-</span>
                       )}
+                    </td>
+
+                    {/* Net Working Hours (Bold Green text) */}
+                    <td className="py-3 px-5 text-center font-black text-sm text-[#16a34a]">
+                      {sum.netWorkingHoursFormatted}
                     </td>
 
                     {/* Assigned Sites (Rounded chips) */}

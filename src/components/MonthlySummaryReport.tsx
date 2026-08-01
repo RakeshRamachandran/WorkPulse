@@ -83,6 +83,11 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
 
       const regularHours = workingDays * 8;
       const totalHours = regularHours + otHours;
+      const netWorkingMins = Math.max(0, regularHours * 60 - totalLateMinutes);
+      const netWorkingHours = parseFloat((netWorkingMins / 60).toFixed(2));
+      const netHrs = Math.floor(netWorkingMins / 60);
+      const netMins = netWorkingMins % 60;
+      const netWorkingHoursFormatted = netMins > 0 ? `${netHrs}h ${netMins}m` : `${netHrs}h`;
 
       const lateHrs = Math.floor(totalLateMinutes / 60);
       const lateMins = totalLateMinutes % 60;
@@ -99,6 +104,8 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
         regularHours,
         otHours,
         totalHours,
+        netWorkingHours,
+        netWorkingHoursFormatted,
         totalLateMinutes,
         lateFormatted,
         siteDays,
@@ -147,6 +154,11 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
   const totalRegularHoursAll = filteredSummaries.reduce((acc, s) => acc + s.regularHours, 0);
   const totalOTHoursAll = filteredSummaries.reduce((acc, s) => acc + s.otHours, 0);
   const totalHoursAll = filteredSummaries.reduce((acc, s) => acc + s.totalHours, 0);
+  const totalNetMinsAll = filteredSummaries.reduce((acc, s) => acc + Math.max(0, s.regularHours * 60 - s.totalLateMinutes), 0);
+  const totalNetWorkingHoursAll = parseFloat((totalNetMinsAll / 60).toFixed(2));
+  const totalNetHrsAll = Math.floor(totalNetMinsAll / 60);
+  const totalNetMinsRemAll = totalNetMinsAll % 60;
+  const totalNetWorkingHoursFormatted = totalNetMinsRemAll > 0 ? `${totalNetHrsAll}h ${totalNetMinsRemAll}m` : `${totalNetHrsAll}h`;
   const totalLateMinsAll = filteredSummaries.reduce((acc, s) => acc + s.totalLateMinutes, 0);
 
   // Helper to load logo image for PDF
@@ -182,11 +194,11 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
     doc.text('Venkateswara Electricals', logoImg ? 64 : 14, 12);
 
     doc.setFontSize(9.5);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Monthly Attendance Summary - ${monthName}`, logoImg ? 64 : 14, 19);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Monthly Attendance Report - ${monthName}`, logoImg ? 64 : 14, 19);
 
     doc.setFontSize(8.5);
-    doc.setFont('helvetica', 'normal');
+    doc.setFont('helvetica', 'bold');
     doc.text(
       `Total Working Days: ${netWorkingDays}    |    Total Holidays: ${totalHolidaysInMonth}`,
       logoImg ? 64 : 14,
@@ -202,17 +214,17 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
       s.employee.name,
       s.workingDays.toString(),
       s.leaveDays.toString(),
-      s.holidayCount.toString(),
       s.regularHours.toString(),
       s.otHours.toString(),
-      s.totalHours.toString(),
       s.lateFormatted,
+      s.netWorkingHoursFormatted,
     ]);
 
     autoTable(doc, {
       startY: 38,
+      margin: { left: 10, right: 10 },
       head: [
-        ['Sl No', 'Employee', 'Work Days', 'Leave Days', 'Holiday', 'Regular Hours', 'OT Hours', 'Total Hours', 'Late Time'],
+        ['Sl No', 'Employee', 'Work Days', 'Leave Days', 'Regular Hours', 'OT Hours', 'Late Time', 'Net Working\nHours\n(RH - LT)'],
       ],
       body: tableData,
       theme: 'grid',
@@ -220,23 +232,46 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
         fillColor: [22, 163, 74],
         textColor: [255, 255, 255],
         fontStyle: 'bold',
-        fontSize: 9,
+        fontSize: 8.5,
+        halign: 'center',
+        valign: 'middle',
       },
       styles: {
         fontSize: 8,
-        cellPadding: 2.5,
+        cellPadding: 2,
         textColor: [0, 0, 0],
       },
       columnStyles: {
-        0: { halign: 'center' },
-        1: { fontStyle: 'bold' },
-        2: { halign: 'center', fontStyle: 'bold' },
-        3: { halign: 'center', fontStyle: 'bold' },
-        4: { halign: 'center' },
-        5: { halign: 'center' },
-        6: { halign: 'center', fontStyle: 'bold' },
-        7: { halign: 'center', fontStyle: 'bold' },
-        8: { halign: 'center', fontStyle: 'bold' },
+        0: { halign: 'center', cellWidth: 12 },
+        1: { fontStyle: 'bold', cellWidth: 42 },
+        2: { halign: 'center', fontStyle: 'bold', cellWidth: 20 },
+        3: { halign: 'center', fontStyle: 'bold', cellWidth: 20 },
+        4: { halign: 'center', fontStyle: 'bold', cellWidth: 22 },
+        5: { halign: 'center', fontStyle: 'bold', cellWidth: 20 },
+        6: { halign: 'center', fontStyle: 'bold', cellWidth: 22 },
+        7: { halign: 'center', fontStyle: 'bold', cellWidth: 32 },
+      },
+      didParseCell: (data) => {
+        if (data.section === 'head' && data.column.index === 7) {
+          data.cell.text = [' ', ' ', ' '];
+        }
+      },
+      didDrawCell: (data) => {
+        if (data.section === 'head' && data.column.index === 7) {
+          const centerX = data.cell.x + data.cell.width / 2;
+          doc.setFillColor(22, 163, 74);
+          doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
+
+          doc.setTextColor(255, 255, 255);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(8);
+          doc.text('Net Working', centerX, data.cell.y + 3.5, { align: 'center' });
+          doc.text('Hours', centerX, data.cell.y + 7.2, { align: 'center' });
+
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(7);
+          doc.text('(RH - LT)', centerX, data.cell.y + 10.8, { align: 'center' });
+        }
       },
     });
 
@@ -252,11 +287,10 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
       'Category': s.employee.category,
       'Working Days': s.workingDays,
       'Leave Days': s.leaveDays,
-      'Holidays': s.holidayCount,
       'Regular Hours': s.regularHours,
       'OT Hours': s.otHours,
-      'Total Work Hours': s.totalHours,
       'Late Time': s.lateFormatted,
+      'Net Working Hours (RH - LT)': s.netWorkingHoursFormatted,
     }));
 
     excelRows.push({
@@ -266,11 +300,10 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
       'Category': '',
       'Working Days': totalWorkingDaysAll,
       'Leave Days': totalLeaveDaysAll,
-      'Holidays': 0,
       'Regular Hours': totalRegularHoursAll,
       'OT Hours': totalOTHoursAll,
-      'Total Work Hours': totalHoursAll,
       'Late Time': `${Math.floor(totalLateMinsAll / 60)}h ${totalLateMinsAll % 60}m`,
+      'Net Working Hours (RH - LT)': totalNetWorkingHoursFormatted,
     });
 
     const worksheet = XLSX.utils.json_to_sheet(excelRows);
@@ -341,13 +374,13 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
 
         <div className="bg-white border border-[#E5E7EB] p-[20px] rounded-[14px] shadow-[0_2px_10px_rgba(0,0,0,0.06)] hover:-translate-y-0.5 hover:shadow-[0_6px_18px_rgba(0,0,0,0.08)] transition-all duration-200 ease-out group">
           <div className="flex items-center justify-between">
-            <span className="text-[14px] font-medium text-[#6B7280]">Total Work Hours</span>
+            <span className="text-[14px] font-medium text-[#6B7280]">Net Working Hours</span>
             <div className="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
               <Zap className="w-5 h-5" />
             </div>
           </div>
-          <p className="text-[36px] font-bold text-purple-600 mt-3 leading-none">{totalHoursAll}h</p>
-          <p className="text-[14px] text-[#6B7280] font-normal mt-1.5">Reg + Overtime</p>
+          <p className="text-[36px] font-bold text-purple-600 mt-3 leading-none">{totalNetWorkingHoursFormatted}</p>
+          <p className="text-[14px] text-[#6B7280] font-normal mt-1.5">(RH - LT)</p>
         </div>
       </div>
 
@@ -414,16 +447,18 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-[#FAFAFA] text-[13px] uppercase tracking-wider text-[#6B7280] font-semibold border-b border-[#E5E7EB] h-[48px]">
-                  <th className="py-3 px-5 w-24">Emp ID</th>
-                  <th className="py-3 px-5 min-w-[200px]">Employee Name</th>
+                  <th className="py-3 px-5 w-24 text-center">Emp ID</th>
+                  <th className="py-3 px-5 min-w-[200px] text-center">Employee Name</th>
                   <th className="py-3 px-5 text-center">Work Days</th>
                   <th className="py-3 px-5 text-center">Leave Days</th>
-                  <th className="py-3 px-5 text-center">Holidays</th>
-                  <th className="py-3 px-5 text-center">Reg Hours</th>
+                  <th className="py-3 px-5 text-center font-bold">Reg Hours</th>
                   <th className="py-3 px-5 text-center">OT Hours</th>
-                  <th className="py-3 px-5 text-center">Total Hours</th>
                   <th className="py-3 px-5 text-center">Late Time</th>
-                  <th className="py-3 px-5">Primary Site Allocation</th>
+                  <th className="py-3 px-5 text-center">
+                    <div>Net Working Hours</div>
+                    <div className="text-[10px] font-normal normal-case text-[#6B7280]">(RH - LT)</div>
+                  </th>
+                  <th className="py-3 px-5 text-center">Primary Site Allocation</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E5E7EB] text-[14px] text-[#111827]">
@@ -457,24 +492,14 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
                       )}
                     </td>
 
-                    {/* Holidays */}
-                    <td className="py-2.5 px-5 text-center font-medium text-[#6B7280]">
-                      {sum.holidayCount > 0 ? `${sum.holidayCount}d` : '-'}
-                    </td>
-
-                    {/* Regular Hours (Green text) */}
-                    <td className="py-2.5 px-5 text-center font-medium text-[#16A34A]">
+                    {/* Regular Hours (Green text bold) */}
+                    <td className="py-2.5 px-5 text-center font-bold text-[#16A34A]">
                       {sum.regularHours}h
                     </td>
 
                     {/* OT Hours (Orange text) */}
                     <td className="py-2.5 px-5 text-center font-semibold text-[#F59E0B]">
                       {sum.otHours > 0 ? `+${sum.otHours}h` : '-'}
-                    </td>
-
-                    {/* Total Hours (Bold Green text) */}
-                    <td className="py-2.5 px-5 text-center font-bold text-[#16A34A]">
-                      {sum.totalHours}h
                     </td>
 
                     {/* Late Time (Red text) */}
@@ -486,6 +511,11 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
                       ) : (
                         <span className="text-[#6B7280]">-</span>
                       )}
+                    </td>
+
+                    {/* Net Working Hours (Bold Green text) */}
+                    <td className="py-2.5 px-5 text-center font-bold text-[#16A34A]">
+                      {sum.netWorkingHoursFormatted}
                     </td>
 
                     {/* Assigned Site Chips */}

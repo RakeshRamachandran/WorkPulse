@@ -108,6 +108,8 @@ export interface MonthlyEmployeeSummary {
   regularHours: number;
   otHours: number;
   totalHours: number;
+  netWorkingHours: number;
+  netWorkingHoursFormatted: string;
   totalLateMinutes: number;
   lateFormatted: string;
   siteDays: Record<string, number>; // site_id -> count of days worked
