@@ -225,16 +225,18 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
       styles: {
         fontSize: 8,
         cellPadding: 2.5,
+        textColor: [0, 0, 0],
       },
       columnStyles: {
         0: { halign: 'center' },
-        2: { halign: 'center' },
-        3: { halign: 'center' },
+        1: { fontStyle: 'bold' },
+        2: { halign: 'center', fontStyle: 'bold' },
+        3: { halign: 'center', fontStyle: 'bold' },
         4: { halign: 'center' },
         5: { halign: 'center' },
-        6: { halign: 'center' },
+        6: { halign: 'center', fontStyle: 'bold' },
         7: { halign: 'center', fontStyle: 'bold' },
-        8: { halign: 'center' },
+        8: { halign: 'center', fontStyle: 'bold' },
       },
     });
 
