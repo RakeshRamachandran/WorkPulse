@@ -211,22 +211,34 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     doc.setFont('helvetica', 'normal');
     doc.text(`Generated: ${new Date().toLocaleDateString()}`, 196, 12, { align: 'right' });
 
-    const tableData = filteredSummaries.map((s, index) => [
-      (index + 1).toString(),
-      s.employee.name,
-      s.workingDays.toString(),
-      s.leaveDays.toString(),
-      s.regularHours.toString(),
-      s.otHours.toString(),
-      s.lateFormatted,
-      s.netWorkingHoursFormatted,
-    ]);
+    const tableData = filteredSummaries.map((s, index) => {
+      const siteAllocations =
+        Object.keys(s.siteDays).length === 0
+          ? '-'
+          : Object.entries(s.siteDays)
+              .map(([siteId, count]) => {
+                const sObj = siteMap.get(siteId);
+                return `${sObj ? (sObj.code || sObj.name) : 'Site'}: ${count}d`;
+              })
+              .join(', ');
+
+      return [
+        (index + 1).toString(),
+        s.employee.name,
+        s.workingDays.toString(),
+        s.leaveDays.toString(),
+        s.regularHours.toString(),
+        s.otHours.toString(),
+        s.lateFormatted,
+        siteAllocations,
+      ];
+    });
 
     autoTable(doc, {
       startY: 38,
       margin: { left: 10, right: 10 },
       head: [
-        ['Sl No', 'Employee Name', 'Work Days', 'Leave Days', 'Regular Hours', 'OT Hours', 'Late Time', 'Net Working\nHours\n(RH - LT)'],
+        ['Sl No', 'Employee Name', 'Work Days', 'Leave Days', 'Regular Hours', 'OT Hours', 'Late Time', 'Site Allocation'],
       ],
       body: tableData,
       theme: 'grid',
@@ -240,41 +252,70 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       },
       styles: {
         fontSize: 8,
-        cellPadding: 2,
+        cellPadding: 2.5,
         textColor: [0, 0, 0],
+        valign: 'middle',
       },
       columnStyles: {
-        0: { halign: 'center', cellWidth: 12 },
-        1: { fontStyle: 'bold', cellWidth: 42 },
-        2: { halign: 'center', fontStyle: 'bold', cellWidth: 20 },
-        3: { halign: 'center', fontStyle: 'bold', cellWidth: 20 },
-        4: { halign: 'center', fontStyle: 'bold', cellWidth: 22 },
-        5: { halign: 'center', fontStyle: 'bold', cellWidth: 20 },
-        6: { halign: 'center', fontStyle: 'bold', cellWidth: 22 },
-        7: { halign: 'center', fontStyle: 'bold', cellWidth: 32 },
+        0: { halign: 'center', valign: 'middle', cellWidth: 10 },
+        1: { fontStyle: 'bold', valign: 'middle', cellWidth: 44 },
+        2: { halign: 'center', fontStyle: 'bold', valign: 'middle', cellWidth: 18 },
+        3: { halign: 'center', fontStyle: 'bold', valign: 'middle', cellWidth: 18 },
+        4: { halign: 'center', fontStyle: 'bold', valign: 'middle', cellWidth: 20 },
+        5: { halign: 'center', fontStyle: 'bold', valign: 'middle', cellWidth: 18 },
+        6: { halign: 'center', fontStyle: 'bold', valign: 'middle', cellWidth: 20 },
+        7: { valign: 'middle', cellWidth: 44 },
       },
-      didParseCell: (data) => {
-        if (data.section === 'head' && data.column.index === 7) {
-          data.cell.text = [' ', ' ', ' '];
-        }
-      },
-      didDrawCell: (data) => {
-        if (data.section === 'head' && data.column.index === 7) {
-          const centerX = data.cell.x + data.cell.width / 2;
-          doc.setFillColor(22, 163, 74);
-          doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
+    });
 
-          doc.setTextColor(255, 255, 255);
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(8);
-          doc.text('Net Working', centerX, data.cell.y + 3.5, { align: 'center' });
-          doc.text('Hours', centerX, data.cell.y + 7.2, { align: 'center' });
+    // Compact Site Code Reference placed right below the data table to save paper
+    const lastY = (doc as any).lastAutoTable?.finalY || 200;
+    const pageHeight = doc.internal.pageSize.height;
+    const activeSites = sites.filter((s) => s.is_active !== false);
 
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(7);
-          doc.text('(RH - LT)', centerX, data.cell.y + 10.8, { align: 'center' });
+    const numCols = 3;
+    const colWidth = 62;
+    const numRows = Math.ceil(activeSites.length / numCols);
+    const legendHeight = 6 + numRows * 3.8;
+
+    let curY = lastY + 4;
+    // Only add page if legend genuinely exceeds page bottom margin
+    if (curY + legendHeight > pageHeight - 10) {
+      doc.addPage();
+      curY = 12;
+    }
+
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(22, 163, 74);
+    doc.text('Site Code Details:', 10, curY);
+    curY += 4;
+
+    doc.setFontSize(7.5);
+    doc.setTextColor(51, 65, 85);
+
+    const startLegendY = curY;
+    activeSites.forEach((s, idx) => {
+      const col = idx % numCols;
+      const row = Math.floor(idx / numCols);
+      const itemX = 10 + col * colWidth;
+      const itemY = startLegendY + row * 3.8;
+
+      const codeStr = `${s.code || s.id}: `;
+      doc.setFont('helvetica', 'bold');
+      doc.text(codeStr, itemX, itemY);
+      const codeWidth = doc.getTextWidth(codeStr);
+
+      doc.setFont('helvetica', 'normal');
+      let nameText = s.name;
+      const maxNameWidth = colWidth - codeWidth - 2;
+      if (doc.getTextWidth(nameText) > maxNameWidth) {
+        while (nameText.length > 3 && doc.getTextWidth(nameText + '...') > maxNameWidth) {
+          nameText = nameText.slice(0, -1);
         }
-      },
+        nameText += '...';
+      }
+      doc.text(nameText, itemX + codeWidth, itemY);
     });
 
     doc.save(`Venkateswara_Attendance_${selectedMonth}_${selectedYear}.pdf`);
@@ -282,18 +323,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   // Excel Export
   const handleExportExcel = () => {
-    const excelRows = filteredSummaries.map((s) => ({
-      'Employee ID': s.employee.emp_id,
-      'Employee Name': s.employee.name,
-      'Designation': s.employee.designation,
-      'Category': s.employee.category,
-      'Working Days': s.workingDays,
-      'Leave Days': s.leaveDays,
-      'Regular Hours': s.regularHours,
-      'OT Hours': s.otHours,
-      'Late Time': s.lateFormatted,
-      'Net Working Hours (RH - LT)': s.netWorkingHoursFormatted,
-    }));
+    const excelRows = filteredSummaries.map((s) => {
+      const siteAllocations =
+        Object.keys(s.siteDays).length === 0
+          ? 'No site logged'
+          : Object.entries(s.siteDays)
+              .map(([siteId, count]) => {
+                const sObj = siteMap.get(siteId);
+                return `${sObj ? (sObj.code || sObj.name) : 'Site'}: ${count}d`;
+              })
+              .join(', ');
+
+      return {
+        'Employee ID': s.employee.emp_id,
+        'Employee Name': s.employee.name,
+        'Designation': s.employee.designation,
+        'Category': s.employee.category,
+        'Working Days': s.workingDays,
+        'Leave Days': s.leaveDays,
+        'Regular Hours': s.regularHours,
+        'OT Hours': s.otHours,
+        'Late Time': s.lateFormatted,
+        'Site Allocation': siteAllocations,
+      };
+    });
 
     excelRows.push({
       'Employee ID': 'TOTAL',
@@ -305,7 +358,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       'Regular Hours': totalRegularHoursAll,
       'OT Hours': totalOTHoursAll,
       'Late Time': `${Math.floor(totalLateMinsAll / 60)}h ${totalLateMinsAll % 60}m`,
-      'Net Working Hours (RH - LT)': totalNetWorkingHoursFormatted,
+      'Site Allocation': '',
     });
 
     const worksheet = XLSX.utils.json_to_sheet(excelRows);
@@ -318,7 +371,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <div className="space-y-6 pb-12">
       {/* Executive Modern KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-5">
         {/* Card 1: Staff */}
         <div className="bg-white border border-slate-200/90 p-5 rounded-2xl shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group">
           <div className="flex items-center justify-between">
@@ -377,18 +430,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
           <p className="text-3xl font-extrabold text-amber-600 mt-3 leading-none">{totalOTHoursAll}h</p>
           <p className="text-xs text-slate-500 font-medium mt-1">Extra Site Hours</p>
-        </div>
-
-        {/* Card 6: Late Hours */}
-        <div className="bg-white border border-slate-200/90 p-5 rounded-2xl shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Late Hours</span>
-            <div className="w-9 h-9 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-              <Zap className="w-4 h-4 shrink-0" />
-            </div>
-          </div>
-          <p className="text-3xl font-extrabold text-purple-600 mt-3 leading-none">{totalLateHoursAll}h</p>
-          <p className="text-xs text-slate-500 font-medium mt-1">Arrival Delays</p>
         </div>
       </div>
 
@@ -455,48 +496,44 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 font-semibold border-b border-slate-200 h-12">
-                  <th className="py-3 px-5 w-28 text-center">Emp ID</th>
-                  <th className="py-3 px-5 min-w-[200px] text-center">Employee Name</th>
-                  <th className="py-3 px-5 min-w-[150px] text-center">Designation</th>
-                  <th className="py-3 px-5 text-center">Work Days</th>
-                  <th className="py-3 px-5 text-center">Leave Days</th>
-                  <th className="py-3 px-5 text-center font-extrabold">Reg Hours</th>
-                  <th className="py-3 px-5 text-center">OT Hours</th>
-                  <th className="py-3 px-5 text-center">Late Hours</th>
-                  <th className="py-3 px-5 text-center">
-                    <div>Net Working Hours</div>
-                    <div className="text-[10px] font-normal normal-case text-slate-400">(RH - LT)</div>
-                  </th>
-                  <th className="py-3 px-5 text-center">Assigned Sites</th>
+                  <th className="py-3 px-5 w-28 text-center align-middle">Emp ID</th>
+                  <th className="py-3 px-5 min-w-[200px] text-center align-middle">Employee Name</th>
+                  <th className="py-3 px-5 min-w-[150px] text-center align-middle">Designation</th>
+                  <th className="py-3 px-5 text-center align-middle">Work Days</th>
+                  <th className="py-3 px-5 text-center align-middle">Leave Days</th>
+                  <th className="py-3 px-5 text-center font-extrabold align-middle">Reg Hours</th>
+                  <th className="py-3 px-5 text-center align-middle">OT Hours</th>
+                  <th className="py-3 px-5 text-center align-middle">Late Hours</th>
+                  <th className="py-3 px-5 text-center align-middle">Assigned Sites</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
                 {filteredSummaries.map((sum) => (
                   <tr key={sum.employee.id} className="h-13 hover:bg-slate-50/70 transition-colors">
                     {/* Emp ID Pill Badge */}
-                    <td className="py-3 px-5">
+                    <td className="py-3 px-5 align-middle">
                       <span className="bg-emerald-50 text-[#16a34a] px-2.5 py-1 rounded-full text-xs font-bold inline-block border border-emerald-200/60">
                         {sum.employee.emp_id}
                       </span>
                     </td>
 
                     {/* Employee Name */}
-                    <td className="py-3 px-5 font-bold text-slate-900 text-sm">
+                    <td className="py-3 px-5 font-bold text-slate-900 text-sm align-middle">
                       {sum.employee.name}
                     </td>
 
                     {/* Designation */}
-                    <td className="py-3 px-5 text-xs text-slate-500 font-semibold">
+                    <td className="py-3 px-5 text-xs text-slate-500 font-semibold align-middle">
                       {sum.employee.designation}
                     </td>
 
                     {/* Working Days */}
-                    <td className="py-3 px-5 text-center font-bold text-slate-900">
+                    <td className="py-3 px-5 text-center font-bold text-slate-900 align-middle">
                       {sum.workingDays}
                     </td>
 
                     {/* Leave Days */}
-                    <td className="py-3 px-5 text-center">
+                    <td className="py-3 px-5 text-center align-middle">
                       {sum.leaveDays > 0 ? (
                         <span className="bg-rose-50 text-rose-700 font-bold px-2 py-0.5 rounded-full text-xs inline-block border border-rose-200">
                           {sum.leaveDays}d
@@ -507,17 +544,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </td>
 
                     {/* Regular Hours (Green bold text) */}
-                    <td className="py-3 px-5 text-center font-bold text-[#16a34a]">
+                    <td className="py-3 px-5 text-center font-bold text-[#16a34a] align-middle">
                       {sum.regularHours}h
                     </td>
 
                     {/* OT Hours (Orange text) */}
-                    <td className="py-3 px-5 text-center font-extrabold text-amber-600">
+                    <td className="py-3 px-5 text-center font-extrabold text-amber-600 align-middle">
                       {sum.otHours > 0 ? `+${sum.otHours}h` : '-'}
                     </td>
 
                     {/* Late Hours (Red text) */}
-                    <td className="py-3 px-5 text-center">
+                    <td className="py-3 px-5 text-center align-middle">
                       {sum.totalLateMinutes > 0 ? (
                         <span className="text-rose-600 font-bold">
                           {sum.lateFormatted}
@@ -527,13 +564,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       )}
                     </td>
 
-                    {/* Net Working Hours (Bold Green text) */}
-                    <td className="py-3 px-5 text-center font-black text-sm text-[#16a34a]">
-                      {sum.netWorkingHoursFormatted}
-                    </td>
-
                     {/* Assigned Sites (Rounded chips) */}
-                    <td className="py-3 px-5">
+                    <td className="py-3 px-5 align-middle">
                       <div className="flex flex-wrap gap-1.5">
                         {Object.keys(sum.siteDays).length === 0 ? (
                           <span className="bg-slate-100 text-slate-500 rounded-full px-2.5 py-0.5 text-[11px] font-semibold">No site logged</span>

@@ -209,22 +209,34 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
     doc.setFont('helvetica', 'normal');
     doc.text(`Generated: ${new Date().toLocaleDateString()}`, 196, 12, { align: 'right' });
 
-    const tableData = filteredSummaries.map((s, index) => [
-      (index + 1).toString(),
-      s.employee.name,
-      s.workingDays.toString(),
-      s.leaveDays.toString(),
-      s.regularHours.toString(),
-      s.otHours.toString(),
-      s.lateFormatted,
-      s.netWorkingHoursFormatted,
-    ]);
+    const tableData = filteredSummaries.map((s, index) => {
+      const siteAllocations =
+        Object.keys(s.siteDays).length === 0
+          ? '-'
+          : Object.entries(s.siteDays)
+              .map(([siteId, count]) => {
+                const sObj = siteMap.get(siteId);
+                return `${sObj ? (sObj.code || sObj.name) : 'Site'}: ${count}d`;
+              })
+              .join(', ');
+
+      return [
+        (index + 1).toString(),
+        s.employee.name,
+        s.workingDays.toString(),
+        s.leaveDays.toString(),
+        s.regularHours.toString(),
+        s.otHours.toString(),
+        s.lateFormatted,
+        siteAllocations,
+      ];
+    });
 
     autoTable(doc, {
       startY: 38,
       margin: { left: 10, right: 10 },
       head: [
-        ['Sl No', 'Employee', 'Work Days', 'Leave Days', 'Regular Hours', 'OT Hours', 'Late Time', 'Net Working\nHours\n(RH - LT)'],
+        ['Sl No', 'Employee', 'Work Days', 'Leave Days', 'Regular Hours', 'OT Hours', 'Late Time', 'Site Allocation'],
       ],
       body: tableData,
       theme: 'grid',
@@ -238,41 +250,70 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
       },
       styles: {
         fontSize: 8,
-        cellPadding: 2,
+        cellPadding: 2.5,
         textColor: [0, 0, 0],
+        valign: 'middle',
       },
       columnStyles: {
-        0: { halign: 'center', cellWidth: 12 },
-        1: { fontStyle: 'bold', cellWidth: 42 },
-        2: { halign: 'center', fontStyle: 'bold', cellWidth: 20 },
-        3: { halign: 'center', fontStyle: 'bold', cellWidth: 20 },
-        4: { halign: 'center', fontStyle: 'bold', cellWidth: 22 },
-        5: { halign: 'center', fontStyle: 'bold', cellWidth: 20 },
-        6: { halign: 'center', fontStyle: 'bold', cellWidth: 22 },
-        7: { halign: 'center', fontStyle: 'bold', cellWidth: 32 },
+        0: { halign: 'center', valign: 'middle', cellWidth: 10 },
+        1: { fontStyle: 'bold', valign: 'middle', cellWidth: 44 },
+        2: { halign: 'center', fontStyle: 'bold', valign: 'middle', cellWidth: 18 },
+        3: { halign: 'center', fontStyle: 'bold', valign: 'middle', cellWidth: 18 },
+        4: { halign: 'center', fontStyle: 'bold', valign: 'middle', cellWidth: 20 },
+        5: { halign: 'center', fontStyle: 'bold', valign: 'middle', cellWidth: 18 },
+        6: { halign: 'center', fontStyle: 'bold', valign: 'middle', cellWidth: 20 },
+        7: { valign: 'middle', cellWidth: 44 },
       },
-      didParseCell: (data) => {
-        if (data.section === 'head' && data.column.index === 7) {
-          data.cell.text = [' ', ' ', ' '];
-        }
-      },
-      didDrawCell: (data) => {
-        if (data.section === 'head' && data.column.index === 7) {
-          const centerX = data.cell.x + data.cell.width / 2;
-          doc.setFillColor(22, 163, 74);
-          doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
+    });
 
-          doc.setTextColor(255, 255, 255);
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(8);
-          doc.text('Net Working', centerX, data.cell.y + 3.5, { align: 'center' });
-          doc.text('Hours', centerX, data.cell.y + 7.2, { align: 'center' });
+    // Compact Site Code Reference placed right below the data table to save paper
+    const lastY = (doc as any).lastAutoTable?.finalY || 200;
+    const pageHeight = doc.internal.pageSize.height;
+    const activeSites = sites.filter((s) => s.is_active !== false);
 
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(7);
-          doc.text('(RH - LT)', centerX, data.cell.y + 10.8, { align: 'center' });
+    const numCols = 3;
+    const colWidth = 62;
+    const numRows = Math.ceil(activeSites.length / numCols);
+    const legendHeight = 6 + numRows * 3.8;
+
+    let curY = lastY + 4;
+    // Only add page if legend genuinely exceeds page bottom margin
+    if (curY + legendHeight > pageHeight - 10) {
+      doc.addPage();
+      curY = 12;
+    }
+
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(22, 163, 74);
+    doc.text('Site Code Details:', 10, curY);
+    curY += 4;
+
+    doc.setFontSize(7.5);
+    doc.setTextColor(51, 65, 85);
+
+    const startLegendY = curY;
+    activeSites.forEach((s, idx) => {
+      const col = idx % numCols;
+      const row = Math.floor(idx / numCols);
+      const itemX = 10 + col * colWidth;
+      const itemY = startLegendY + row * 3.8;
+
+      const codeStr = `${s.code || s.id}: `;
+      doc.setFont('helvetica', 'bold');
+      doc.text(codeStr, itemX, itemY);
+      const codeWidth = doc.getTextWidth(codeStr);
+
+      doc.setFont('helvetica', 'normal');
+      let nameText = s.name;
+      const maxNameWidth = colWidth - codeWidth - 2;
+      if (doc.getTextWidth(nameText) > maxNameWidth) {
+        while (nameText.length > 3 && doc.getTextWidth(nameText + '...') > maxNameWidth) {
+          nameText = nameText.slice(0, -1);
         }
-      },
+        nameText += '...';
+      }
+      doc.text(nameText, itemX + codeWidth, itemY);
     });
 
     doc.save(`Venkateswara_Monthly_Report_${selectedMonth}_${selectedYear}.pdf`);
@@ -280,18 +321,30 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
 
   // Excel Export
   const handleExportExcel = () => {
-    const excelRows = filteredSummaries.map((s) => ({
-      'Employee ID': s.employee.emp_id,
-      'Employee Name': s.employee.name,
-      'Designation': s.employee.designation,
-      'Category': s.employee.category,
-      'Working Days': s.workingDays,
-      'Leave Days': s.leaveDays,
-      'Regular Hours': s.regularHours,
-      'OT Hours': s.otHours,
-      'Late Time': s.lateFormatted,
-      'Net Working Hours (RH - LT)': s.netWorkingHoursFormatted,
-    }));
+    const excelRows = filteredSummaries.map((s) => {
+      const siteAllocations =
+        Object.keys(s.siteDays).length === 0
+          ? 'No site logged'
+          : Object.entries(s.siteDays)
+              .map(([siteId, count]) => {
+                const sObj = siteMap.get(siteId);
+                return `${sObj ? (sObj.code || sObj.name) : 'Site'}: ${count}d`;
+              })
+              .join(', ');
+
+      return {
+        'Employee ID': s.employee.emp_id,
+        'Employee Name': s.employee.name,
+        'Designation': s.employee.designation,
+        'Category': s.employee.category,
+        'Working Days': s.workingDays,
+        'Leave Days': s.leaveDays,
+        'Regular Hours': s.regularHours,
+        'OT Hours': s.otHours,
+        'Late Time': s.lateFormatted,
+        'Site Allocation': siteAllocations,
+      };
+    });
 
     excelRows.push({
       'Employee ID': 'TOTAL',
@@ -303,7 +356,7 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
       'Regular Hours': totalRegularHoursAll,
       'OT Hours': totalOTHoursAll,
       'Late Time': `${Math.floor(totalLateMinsAll / 60)}h ${totalLateMinsAll % 60}m`,
-      'Net Working Hours (RH - LT)': totalNetWorkingHoursFormatted,
+      'Site Allocation': '',
     });
 
     const worksheet = XLSX.utils.json_to_sheet(excelRows);
@@ -316,7 +369,7 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
   return (
     <div className="space-y-[24px] pb-12">
       {/* KPI Cards (Specs: Card radius 14px, Padding 20px, Gap 20px, Value 36px) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-[20px]">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-[20px]">
         <div className="bg-white border border-[#E5E7EB] p-[20px] rounded-[14px] shadow-[0_2px_10px_rgba(0,0,0,0.06)] hover:-translate-y-0.5 hover:shadow-[0_6px_18px_rgba(0,0,0,0.08)] transition-all duration-200 ease-out group">
           <div className="flex items-center justify-between">
             <span className="text-[14px] font-medium text-[#6B7280]">Staff Roster</span>
@@ -370,17 +423,6 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
           </div>
           <p className="text-[36px] font-bold text-[#F59E0B] mt-3 leading-none">{totalOTHoursAll}h</p>
           <p className="text-[14px] text-[#6B7280] font-normal mt-1.5">Extra Site Hours</p>
-        </div>
-
-        <div className="bg-white border border-[#E5E7EB] p-[20px] rounded-[14px] shadow-[0_2px_10px_rgba(0,0,0,0.06)] hover:-translate-y-0.5 hover:shadow-[0_6px_18px_rgba(0,0,0,0.08)] transition-all duration-200 ease-out group">
-          <div className="flex items-center justify-between">
-            <span className="text-[14px] font-medium text-[#6B7280]">Net Working Hours</span>
-            <div className="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-              <Zap className="w-5 h-5" />
-            </div>
-          </div>
-          <p className="text-[36px] font-bold text-purple-600 mt-3 leading-none">{totalNetWorkingHoursFormatted}</p>
-          <p className="text-[14px] text-[#6B7280] font-normal mt-1.5">(RH - LT)</p>
         </div>
       </div>
 
@@ -447,42 +489,38 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-[#FAFAFA] text-[13px] uppercase tracking-wider text-[#6B7280] font-semibold border-b border-[#E5E7EB] h-[48px]">
-                  <th className="py-3 px-5 w-24 text-center">Emp ID</th>
-                  <th className="py-3 px-5 min-w-[200px] text-center">Employee Name</th>
-                  <th className="py-3 px-5 text-center">Work Days</th>
-                  <th className="py-3 px-5 text-center">Leave Days</th>
-                  <th className="py-3 px-5 text-center font-bold">Reg Hours</th>
-                  <th className="py-3 px-5 text-center">OT Hours</th>
-                  <th className="py-3 px-5 text-center">Late Time</th>
-                  <th className="py-3 px-5 text-center">
-                    <div>Net Working Hours</div>
-                    <div className="text-[10px] font-normal normal-case text-[#6B7280]">(RH - LT)</div>
-                  </th>
-                  <th className="py-3 px-5 text-center">Primary Site Allocation</th>
+                  <th className="py-3 px-5 w-24 text-center align-middle">Emp ID</th>
+                  <th className="py-3 px-5 min-w-[200px] text-center align-middle">Employee Name</th>
+                  <th className="py-3 px-5 text-center align-middle">Work Days</th>
+                  <th className="py-3 px-5 text-center align-middle">Leave Days</th>
+                  <th className="py-3 px-5 text-center font-bold align-middle">Reg Hours</th>
+                  <th className="py-3 px-5 text-center align-middle">OT Hours</th>
+                  <th className="py-3 px-5 text-center align-middle">Late Time</th>
+                  <th className="py-3 px-5 text-center align-middle">Primary Site Allocation</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E5E7EB] text-[14px] text-[#111827]">
                 {filteredSummaries.map((sum) => (
                   <tr key={sum.employee.id} className="h-[52px] hover:bg-[#F9FBFA] transition-colors duration-150">
                     {/* Emp ID Badge */}
-                    <td className="py-2.5 px-5 font-mono text-[12px] font-medium text-[#16A34A]">
+                    <td className="py-2.5 px-5 font-mono text-[12px] font-medium text-[#16A34A] align-middle">
                       <span className="bg-[#E8F7EE] text-[#16A34A] px-3 py-1 rounded-full inline-block">
                         {sum.employee.emp_id}
                       </span>
                     </td>
 
                     {/* Employee Name */}
-                    <td className="py-2.5 px-5 font-semibold text-[#111827]">
+                    <td className="py-2.5 px-5 font-semibold text-[#111827] align-middle">
                       {sum.employee.name}
                     </td>
 
                     {/* Work Days */}
-                    <td className="py-2.5 px-5 text-center font-semibold text-[#111827]">
+                    <td className="py-2.5 px-5 text-center font-semibold text-[#111827] align-middle">
                       {sum.workingDays}
                     </td>
 
                     {/* Leave Days */}
-                    <td className="py-2.5 px-5 text-center">
+                    <td className="py-2.5 px-5 text-center align-middle">
                       {sum.leaveDays > 0 ? (
                         <span className="bg-rose-50 text-[#EF4444] font-medium px-2.5 py-0.5 rounded-full text-[12px] inline-block">
                           {sum.leaveDays}d
@@ -493,17 +531,17 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
                     </td>
 
                     {/* Regular Hours (Green text bold) */}
-                    <td className="py-2.5 px-5 text-center font-bold text-[#16A34A]">
+                    <td className="py-2.5 px-5 text-center font-bold text-[#16A34A] align-middle">
                       {sum.regularHours}h
                     </td>
 
                     {/* OT Hours (Orange text) */}
-                    <td className="py-2.5 px-5 text-center font-semibold text-[#F59E0B]">
+                    <td className="py-2.5 px-5 text-center font-semibold text-[#F59E0B] align-middle">
                       {sum.otHours > 0 ? `+${sum.otHours}h` : '-'}
                     </td>
 
                     {/* Late Time (Red text) */}
-                    <td className="py-2.5 px-5 text-center">
+                    <td className="py-2.5 px-5 text-center align-middle">
                       {sum.totalLateMinutes > 0 ? (
                         <span className="text-[#EF4444] font-semibold">
                           {sum.lateFormatted}
@@ -513,13 +551,8 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
                       )}
                     </td>
 
-                    {/* Net Working Hours (Bold Green text) */}
-                    <td className="py-2.5 px-5 text-center font-bold text-[#16A34A]">
-                      {sum.netWorkingHoursFormatted}
-                    </td>
-
                     {/* Assigned Site Chips */}
-                    <td className="py-2.5 px-5">
+                    <td className="py-2.5 px-5 align-middle">
                       <div className="flex flex-wrap gap-1.5">
                         {Object.keys(sum.siteDays).length === 0 ? (
                           <span className="bg-slate-100 text-[#6B7280] rounded-full px-2.5 py-0.5 text-[11px] font-medium">No site logged</span>
