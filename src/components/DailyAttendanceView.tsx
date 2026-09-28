@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import type { Employee, Site, AttendanceRecord, AttendanceStatus } from '../types';
-import { getRecordSiteIds, isSubcontractor } from '../types';
+import { getRecordSiteIds, getRecordOtSiteIds, isSubcontractor } from '../types';
 import { MultiSiteSelect } from './MultiSiteSelect';
 import {
   Search,
@@ -353,6 +353,7 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
       );
       if (existing) {
         const siteIds = getRecordSiteIds(existing);
+        const otSiteIds = getRecordOtSiteIds(existing);
         const resolvedStatus = (existing.status && existing.status.trim() !== '')
           ? existing.status
           : (isSunday ? 'HOLIDAY' : existing.status);
@@ -364,6 +365,8 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
           remarks: existing.remarks || (isSunday ? 'Sunday Weekly Off' : undefined),
           site_ids: siteIds,
           site_id: siteIds[0] || null,
+          ot_site_ids: otSiteIds,
+          ot_site_id: otSiteIds[0] || null,
         };
       } else {
         map[emp.id] = {
@@ -372,6 +375,8 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
           status: isSunday ? 'HOLIDAY' : ('' as any),
           site_id: null,
           site_ids: [],
+          ot_site_id: null,
+          ot_site_ids: [],
           ot_hours: 0,
           late_hours: 0,
           late_minutes: 0,
@@ -412,12 +417,15 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
   const handleStatusChange = (empId: string, status: string) => {
     const current = draftRecords[empId] || {};
     const curSiteIds = getRecordSiteIds(current);
+    const curOtSiteIds = getRecordOtSiteIds(current);
     const isLeave = status === 'LEAVE';
     const isHoliday = status === 'HOLIDAY';
     updateLocalRecord(empId, {
       status: status as AttendanceStatus,
       site_id: isLeave ? null : (curSiteIds[0] || null),
       site_ids: isLeave ? [] : curSiteIds,
+      ot_site_id: isLeave ? null : (curOtSiteIds[0] || null),
+      ot_site_ids: isLeave ? [] : curOtSiteIds,
       ot_hours: isLeave ? 0 : (current.ot_hours || 0),
       late_hours: (isLeave || isHoliday) ? 0 : (current.late_hours || 0),
       late_minutes: (isLeave || isHoliday) ? 0 : (current.late_minutes || 0),
@@ -431,6 +439,16 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
       status: newStatus as AttendanceStatus,
       site_ids: siteIds,
       site_id: siteIds[0] || null,
+    });
+  };
+
+  const handleOtSitesChange = (empId: string, otSiteIds: string[]) => {
+    const current = draftRecords[empId] || {};
+    const newStatus = (!current.status || current.status.trim() === '') ? 'PRESENT' : current.status;
+    updateLocalRecord(empId, {
+      status: newStatus as AttendanceStatus,
+      ot_site_ids: otSiteIds,
+      ot_site_id: otSiteIds[0] || null,
     });
   };
 
@@ -519,6 +537,8 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
           status: '' as any,
           site_ids: [],
           site_id: null,
+          ot_site_ids: [],
+          ot_site_id: null,
           ot_hours: 0,
           late_hours: 0,
           late_minutes: 0,
@@ -844,6 +864,7 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
                   <th className="py-3 px-5 text-center w-28">Labours</th>
                 )}
                 <th className="py-3 px-5 text-center w-28">OT Hours</th>
+                <th className="py-3 px-5 min-w-[280px]">OT Site Location(s)</th>
                 {activeSection === 'employees' && (
                   <th className="py-3 px-5 text-center min-w-[200px]">Late Arrival (Hrs / Mins)</th>
                 )}
@@ -852,7 +873,7 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
             <tbody className="divide-y divide-[#E5E7EB] text-[14px] text-[#111827]">
               {visibleEmployees.length === 0 ? (
                 <tr>
-                  <td colSpan={activeSection === 'contractors' ? 6 : 7} className="py-12 text-center text-[14px] text-[#6B7280] italic">
+                  <td colSpan={activeSection === 'contractors' ? 7 : 8} className="py-12 text-center text-[14px] text-[#6B7280] italic">
                     No {activeSection === 'employees' ? 'employees' : 'contractors'} match your filters.
                   </td>
                 </tr>
@@ -935,6 +956,20 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
                           <OTInput
                             value={currentOT}
                             onChange={(ot) => handleOTChange(emp.id, ot)}
+                          />
+                        )}
+                      </td>
+
+                      {/* OT Site Multi-Select */}
+                      <td className="py-3 px-5 min-w-[280px]">
+                        {isLeave ? (
+                          <span className="text-[14px] text-[#6B7280] italic">N/A (L)</span>
+                        ) : (
+                          <MultiSiteSelect
+                            sites={sites}
+                            selectedSiteIds={getRecordOtSiteIds(rec)}
+                            onChange={(ids) => handleOtSitesChange(emp.id, ids)}
+                            placeholder="Select OT Site Location(s)"
                           />
                         )}
                       </td>

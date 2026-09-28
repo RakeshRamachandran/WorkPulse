@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { Employee, Site, AttendanceRecord, MonthlyEmployeeSummary } from '../types';
-import { getRecordSiteIds, isSubcontractor } from '../types';
+import { getRecordSiteIds, getRecordOtSiteIds, isSubcontractor } from '../types';
 import {
   Users,
   Briefcase,
@@ -227,7 +227,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         s.employee.name,
         s.workingDays.toString(),
         s.leaveDays.toString(),
-        s.regularHours.toString(),
         s.otHours.toString(),
         s.lateFormatted,
         siteAllocations,
@@ -238,7 +237,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       startY: 38,
       margin: { left: 10, right: 10 },
       head: [
-        ['Sl No', 'Employee Name', 'Work Days', 'Leave Days', 'Regular Hours', 'OT Hours', 'Late Time', 'Site Allocation'],
+        ['Sl No', 'Employee Name', 'Work Days', 'Leave Days', 'OT Hours', 'Late Time', 'Site Allocation'],
       ],
       body: tableData,
       theme: 'grid',
@@ -258,13 +257,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       },
       columnStyles: {
         0: { halign: 'center', valign: 'middle', cellWidth: 10 },
-        1: { fontStyle: 'bold', valign: 'middle', cellWidth: 44 },
-        2: { halign: 'center', fontStyle: 'bold', valign: 'middle', cellWidth: 18 },
-        3: { halign: 'center', fontStyle: 'bold', valign: 'middle', cellWidth: 18 },
+        1: { fontStyle: 'bold', valign: 'middle', cellWidth: 46 },
+        2: { halign: 'center', fontStyle: 'bold', valign: 'middle', cellWidth: 20 },
+        3: { halign: 'center', fontStyle: 'bold', valign: 'middle', cellWidth: 20 },
         4: { halign: 'center', fontStyle: 'bold', valign: 'middle', cellWidth: 20 },
-        5: { halign: 'center', fontStyle: 'bold', valign: 'middle', cellWidth: 18 },
-        6: { halign: 'center', fontStyle: 'bold', valign: 'middle', cellWidth: 20 },
-        7: { valign: 'middle', cellWidth: 44 },
+        5: { halign: 'center', fontStyle: 'bold', valign: 'middle', cellWidth: 22 },
+        6: { valign: 'middle', cellWidth: 52 },
       },
     });
 
@@ -341,7 +339,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         'Category': s.employee.category,
         'Working Days': s.workingDays,
         'Leave Days': s.leaveDays,
-        'Regular Hours': s.regularHours,
         'OT Hours': s.otHours,
         'Late Time': s.lateFormatted,
         'Site Allocation': siteAllocations,
@@ -355,7 +352,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       'Category': '',
       'Working Days': totalWorkingDaysAll,
       'Leave Days': totalLeaveDaysAll,
-      'Regular Hours': totalRegularHoursAll,
       'OT Hours': totalOTHoursAll,
       'Late Time': `${Math.floor(totalLateMinsAll / 60)}h ${totalLateMinsAll % 60}m`,
       'Site Allocation': '',
@@ -371,7 +367,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <div className="space-y-6 pb-12">
       {/* Executive Modern KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* Card 1: Staff */}
         <div className="bg-white border border-slate-200/90 p-5 rounded-2xl shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group">
           <div className="flex items-center justify-between">
@@ -408,19 +404,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <p className="text-xs text-slate-500 font-medium mt-1">Leaves Taken</p>
         </div>
 
-        {/* Card 4: Regular Hours */}
-        <div className="bg-white border border-slate-200/90 p-5 rounded-2xl shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Regular Hours</span>
-            <div className="w-9 h-9 rounded-full bg-emerald-50 text-[#16a34a] flex items-center justify-center shrink-0">
-              <Clock className="w-4 h-4 shrink-0" />
-            </div>
-          </div>
-          <p className="text-3xl font-extrabold text-[#16a34a] mt-3 leading-none">{totalRegularHoursAll}h</p>
-          <p className="text-xs text-slate-500 font-medium mt-1">Standard 8h Rate</p>
-        </div>
-
-        {/* Card 5: Overtime Hours */}
+        {/* Card 4: Overtime Hours */}
         <div className="bg-white border border-slate-200/90 p-5 rounded-2xl shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Overtime (OT)</span>
@@ -501,7 +485,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <th className="py-3 px-5 min-w-[150px] text-center align-middle">Designation</th>
                   <th className="py-3 px-5 text-center align-middle">Work Days</th>
                   <th className="py-3 px-5 text-center align-middle">Leave Days</th>
-                  <th className="py-3 px-5 text-center font-extrabold align-middle">Reg Hours</th>
                   <th className="py-3 px-5 text-center align-middle">OT Hours</th>
                   <th className="py-3 px-5 text-center align-middle">Late Hours</th>
                   <th className="py-3 px-5 text-center align-middle">Assigned Sites</th>
@@ -541,11 +524,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       ) : (
                         <span className="text-slate-400 font-normal">-</span>
                       )}
-                    </td>
-
-                    {/* Regular Hours (Green bold text) */}
-                    <td className="py-3 px-5 text-center font-bold text-[#16a34a] align-middle">
-                      {sum.regularHours}h
                     </td>
 
                     {/* OT Hours (Orange text) */}

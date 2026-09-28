@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { Employee, Site, AttendanceRecord, MonthlyEmployeeSummary } from '../types';
-import { getRecordSiteIds, isSubcontractor } from '../types';
+import { getRecordSiteIds, getRecordOtSiteIds, isSubcontractor } from '../types';
 import {
   FileSpreadsheet,
   FileText,
@@ -77,6 +77,15 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
           const sIds = getRecordSiteIds(r);
           sIds.forEach((sId) => {
             siteDays[sId] = (siteDays[sId] || 0) + 1;
+          });
+        }
+
+        if (Number(r.ot_hours) > 0) {
+          const otSIds = getRecordOtSiteIds(r);
+          otSIds.forEach((sId) => {
+            if (!siteDays[sId]) {
+              siteDays[sId] = (siteDays[sId] || 0) + 1;
+            }
           });
         }
       });
@@ -225,7 +234,6 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
         s.employee.name,
         s.workingDays.toString(),
         s.leaveDays.toString(),
-        s.regularHours.toString(),
         s.otHours.toString(),
         s.lateFormatted,
         siteAllocations,
@@ -236,7 +244,7 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
       startY: 38,
       margin: { left: 10, right: 10 },
       head: [
-        ['Sl No', 'Employee', 'Work Days', 'Leave Days', 'Regular Hours', 'OT Hours', 'Late Time', 'Site Allocation'],
+        ['Sl No', 'Employee', 'Work Days', 'Leave Days', 'OT Hours', 'Late Time', 'Site Allocation'],
       ],
       body: tableData,
       theme: 'grid',
@@ -256,13 +264,12 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
       },
       columnStyles: {
         0: { halign: 'center', valign: 'middle', cellWidth: 10 },
-        1: { fontStyle: 'bold', valign: 'middle', cellWidth: 44 },
-        2: { halign: 'center', fontStyle: 'bold', valign: 'middle', cellWidth: 18 },
-        3: { halign: 'center', fontStyle: 'bold', valign: 'middle', cellWidth: 18 },
+        1: { fontStyle: 'bold', valign: 'middle', cellWidth: 46 },
+        2: { halign: 'center', fontStyle: 'bold', valign: 'middle', cellWidth: 20 },
+        3: { halign: 'center', fontStyle: 'bold', valign: 'middle', cellWidth: 20 },
         4: { halign: 'center', fontStyle: 'bold', valign: 'middle', cellWidth: 20 },
-        5: { halign: 'center', fontStyle: 'bold', valign: 'middle', cellWidth: 18 },
-        6: { halign: 'center', fontStyle: 'bold', valign: 'middle', cellWidth: 20 },
-        7: { valign: 'middle', cellWidth: 44 },
+        5: { halign: 'center', fontStyle: 'bold', valign: 'middle', cellWidth: 22 },
+        6: { valign: 'middle', cellWidth: 52 },
       },
     });
 
@@ -339,7 +346,6 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
         'Category': s.employee.category,
         'Working Days': s.workingDays,
         'Leave Days': s.leaveDays,
-        'Regular Hours': s.regularHours,
         'OT Hours': s.otHours,
         'Late Time': s.lateFormatted,
         'Site Allocation': siteAllocations,
@@ -353,7 +359,6 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
       'Category': '',
       'Working Days': totalWorkingDaysAll,
       'Leave Days': totalLeaveDaysAll,
-      'Regular Hours': totalRegularHoursAll,
       'OT Hours': totalOTHoursAll,
       'Late Time': `${Math.floor(totalLateMinsAll / 60)}h ${totalLateMinsAll % 60}m`,
       'Site Allocation': '',
@@ -369,7 +374,7 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
   return (
     <div className="space-y-[24px] pb-12">
       {/* KPI Cards (Specs: Card radius 14px, Padding 20px, Gap 20px, Value 36px) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-[20px]">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-[20px]">
         <div className="bg-white border border-[#E5E7EB] p-[20px] rounded-[14px] shadow-[0_2px_10px_rgba(0,0,0,0.06)] hover:-translate-y-0.5 hover:shadow-[0_6px_18px_rgba(0,0,0,0.08)] transition-all duration-200 ease-out group">
           <div className="flex items-center justify-between">
             <span className="text-[14px] font-medium text-[#6B7280]">Staff Roster</span>
@@ -401,17 +406,6 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
           </div>
           <p className="text-[36px] font-bold text-[#EF4444] mt-3 leading-none">{totalLeaveDaysAll}</p>
           <p className="text-[14px] text-[#6B7280] font-normal mt-1.5">Total Leaves</p>
-        </div>
-
-        <div className="bg-white border border-[#E5E7EB] p-[20px] rounded-[14px] shadow-[0_2px_10px_rgba(0,0,0,0.06)] hover:-translate-y-0.5 hover:shadow-[0_6px_18px_rgba(0,0,0,0.08)] transition-all duration-200 ease-out group">
-          <div className="flex items-center justify-between">
-            <span className="text-[14px] font-medium text-[#6B7280]">Regular Hours</span>
-            <div className="w-10 h-10 rounded-full bg-[#E8F7EE] text-[#16A34A] flex items-center justify-center shrink-0">
-              <Clock className="w-5 h-5" />
-            </div>
-          </div>
-          <p className="text-[36px] font-bold text-[#16A34A] mt-3 leading-none">{totalRegularHoursAll}h</p>
-          <p className="text-[14px] text-[#6B7280] font-normal mt-1.5">Standard 8h Rate</p>
         </div>
 
         <div className="bg-white border border-[#E5E7EB] p-[20px] rounded-[14px] shadow-[0_2px_10px_rgba(0,0,0,0.06)] hover:-translate-y-0.5 hover:shadow-[0_6px_18px_rgba(0,0,0,0.08)] transition-all duration-200 ease-out group">
@@ -493,7 +487,6 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
                   <th className="py-3 px-5 min-w-[200px] text-center align-middle">Employee Name</th>
                   <th className="py-3 px-5 text-center align-middle">Work Days</th>
                   <th className="py-3 px-5 text-center align-middle">Leave Days</th>
-                  <th className="py-3 px-5 text-center font-bold align-middle">Reg Hours</th>
                   <th className="py-3 px-5 text-center align-middle">OT Hours</th>
                   <th className="py-3 px-5 text-center align-middle">Late Time</th>
                   <th className="py-3 px-5 text-center align-middle">Primary Site Allocation</th>
@@ -528,11 +521,6 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
                       ) : (
                         <span className="text-[#6B7280]">-</span>
                       )}
-                    </td>
-
-                    {/* Regular Hours (Green text bold) */}
-                    <td className="py-2.5 px-5 text-center font-bold text-[#16A34A] align-middle">
-                      {sum.regularHours}h
                     </td>
 
                     {/* OT Hours (Orange text) */}

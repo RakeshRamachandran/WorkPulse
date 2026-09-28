@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { getRecordSiteIds, normalizeDateStr, type Employee, type Site, type AttendanceRecord, type SupabaseConfig, type AppUser } from '../types';
+import { getRecordSiteIds, getRecordOtSiteIds, normalizeDateStr, type Employee, type Site, type AttendanceRecord, type SupabaseConfig, type AppUser } from '../types';
 import { INITIAL_EMPLOYEES, INITIAL_SITES } from '../data/initialData';
 
 const CONFIG_STORAGE_KEY = 've_supabase_config';
@@ -284,11 +284,14 @@ export class DataService {
       return data.map((r) => {
         const dStr = normalizeDateStr(r.date) || normDate;
         const site_ids = getRecordSiteIds(r);
+        const ot_site_ids = getRecordOtSiteIds(r);
         return {
           ...r,
           date: dStr,
           site_id: site_ids[0] || r.site_id || null,
           site_ids,
+          ot_site_id: ot_site_ids[0] || r.ot_site_id || null,
+          ot_site_ids,
           ot_hours: Number(r.ot_hours) || 0,
           late_hours: Number(r.late_hours) || 0,
           late_minutes: Number(r.late_minutes) || 0,
@@ -337,11 +340,14 @@ export class DataService {
       return rawData.map((r) => {
         const dStr = normalizeDateStr(r.date) || r.date;
         const site_ids = getRecordSiteIds(r);
+        const ot_site_ids = getRecordOtSiteIds(r);
         return {
           ...r,
           date: dStr,
           site_id: site_ids[0] || r.site_id || null,
           site_ids,
+          ot_site_id: ot_site_ids[0] || r.ot_site_id || null,
+          ot_site_ids,
           ot_hours: Number(r.ot_hours) || 0,
           late_hours: Number(r.late_hours) || 0,
           late_minutes: Number(r.late_minutes) || 0,
@@ -366,6 +372,8 @@ export class DataService {
     employee_id: string | null;
     site_id: string | null;
     site_ids: string[];
+    ot_site_id: string | null;
+    ot_site_ids: string[];
   }> {
     const employees = await this.getEmployees();
     const sites = await this.getSites();
@@ -404,10 +412,29 @@ export class DataService {
 
     const primarySiteUuid = resolvedSiteIds.length > 0 ? resolvedSiteIds[0] : (record.site_id || null);
 
+    const rawOtSiteIds = getRecordOtSiteIds(record);
+    const resolvedOtSiteIds: string[] = [];
+    rawOtSiteIds.forEach((sId) => {
+      if (isValidUuid(sId)) {
+        resolvedOtSiteIds.push(sId);
+      } else {
+        const siteMatch = sites.find((s) => s.id === sId || s.code === sId || s.name === sId);
+        if (siteMatch) {
+          resolvedOtSiteIds.push(siteMatch.id);
+        } else if (sId) {
+          resolvedOtSiteIds.push(sId);
+        }
+      }
+    });
+
+    const primaryOtSiteUuid = resolvedOtSiteIds.length > 0 ? resolvedOtSiteIds[0] : (record.ot_site_id || null);
+
     return {
       employee_id: empUuid || record.employee_id || null,
       site_id: primarySiteUuid,
       site_ids: resolvedSiteIds,
+      ot_site_id: primaryOtSiteUuid,
+      ot_site_ids: resolvedOtSiteIds,
     };
   }
 
@@ -417,8 +444,13 @@ export class DataService {
       throw new Error('Supabase online database client is not connected.');
     }
 
-    const { employee_id: resolvedEmpId, site_id: primarySiteUuid, site_ids: resolvedSiteIds } =
-      await this.resolveRecordUuids(record);
+    const {
+      employee_id: resolvedEmpId,
+      site_id: primarySiteUuid,
+      site_ids: resolvedSiteIds,
+      ot_site_id: primaryOtSiteUuid,
+      ot_site_ids: resolvedOtSiteIds,
+    } = await this.resolveRecordUuids(record);
 
     const normDate = normalizeDateStr(record.date) || record.date;
 
@@ -428,6 +460,8 @@ export class DataService {
       date: normDate,
       site_id: primarySiteUuid,
       site_ids: resolvedSiteIds,
+      ot_site_id: primaryOtSiteUuid,
+      ot_site_ids: resolvedOtSiteIds,
       ot_hours: Number(record.ot_hours) || 0,
       late_hours: Number(record.late_hours) || 0,
       late_minutes: Number(record.late_minutes) || 0,
@@ -442,6 +476,8 @@ export class DataService {
         status: recordToSave.status || 'PRESENT',
         site_id: recordToSave.site_id,
         site_ids: recordToSave.site_ids,
+        ot_site_id: recordToSave.ot_site_id,
+        ot_site_ids: recordToSave.ot_site_ids,
         ot_hours: recordToSave.ot_hours,
         late_hours: recordToSave.late_hours,
         late_minutes: recordToSave.late_minutes,
@@ -457,13 +493,24 @@ export class DataService {
         .single();
 
       if (error) {
-        console.warn('Online DB saveAttendanceRecord retry without site_ids:', error.message);
-        const { site_ids, ...fallbackItem } = payloadItem;
-        const retryRes = await client
+        console.warn('Online DB saveAttendanceRecord error, retrying without ot_site_ids:', error.message);
+        const { ot_site_ids, ot_site_id, ...fallback1 } = payloadItem;
+        let retryRes = await client
           .from('attendance_records')
-          .upsert([fallbackItem], { onConflict: 'employee_id,date' })
+          .upsert([fallback1], { onConflict: 'employee_id,date' })
           .select()
           .single();
+
+        if (retryRes.error) {
+          console.warn('Online DB saveAttendanceRecord retry without site_ids:', retryRes.error.message);
+          const { site_ids, ...fallback2 } = fallback1;
+          retryRes = await client
+            .from('attendance_records')
+            .upsert([fallback2], { onConflict: 'employee_id,date' })
+            .select()
+            .single();
+        }
+
         data = retryRes.data;
         error = retryRes.error;
       }
@@ -473,6 +520,7 @@ export class DataService {
           ...data,
           date: normalizeDateStr(data.date) || data.date,
           site_ids: getRecordSiteIds(data).length > 0 ? getRecordSiteIds(data) : resolvedSiteIds,
+          ot_site_ids: getRecordOtSiteIds(data).length > 0 ? getRecordOtSiteIds(data) : resolvedOtSiteIds,
           ot_hours: Number(data.ot_hours) || 0,
           late_hours: Number(data.late_hours) || 0,
           late_minutes: Number(data.late_minutes) || 0,
@@ -526,6 +574,21 @@ export class DataService {
           }
         });
 
+        const rawOtSiteIds = getRecordOtSiteIds(r);
+        const resolvedOtSiteIds: string[] = [];
+        rawOtSiteIds.forEach((sId) => {
+          if (isValidUuid(sId)) {
+            resolvedOtSiteIds.push(sId);
+          } else {
+            const siteMatch = sites.find(s => s.id === sId || s.code === sId || s.name === sId);
+            if (siteMatch) {
+              resolvedOtSiteIds.push(siteMatch.id);
+            } else if (sId) {
+              resolvedOtSiteIds.push(sId);
+            }
+          }
+        });
+
         const normDate = normalizeDateStr(r.date) || r.date;
 
         return {
@@ -534,6 +597,8 @@ export class DataService {
           status: r.status || 'PRESENT',
           site_id: resolvedSiteIds.length > 0 ? resolvedSiteIds[0] : (r.site_id || null),
           site_ids: resolvedSiteIds,
+          ot_site_id: resolvedOtSiteIds.length > 0 ? resolvedOtSiteIds[0] : (r.ot_site_id || null),
+          ot_site_ids: resolvedOtSiteIds,
           ot_hours: Number(r.ot_hours) || 0,
           late_hours: Number(r.late_hours) || 0,
           late_minutes: Number(r.late_minutes) || 0,
@@ -549,14 +614,21 @@ export class DataService {
           .upsert(payload, { onConflict: 'employee_id,date' });
 
         if (error) {
-          console.warn('Online DB bulkSaveAttendance initial error, retrying without site_ids column:', error.message);
-          const fallbackPayload = payload.map(({ site_ids, ...rest }) => rest);
-          const retryRes = await client
+          console.warn('Online DB bulkSaveAttendance error, retrying without ot_site_ids:', error.message);
+          const fallbackPayload1 = payload.map(({ ot_site_ids, ot_site_id, ...rest }) => rest);
+          let retryRes = await client
             .from('attendance_records')
-            .upsert(fallbackPayload, { onConflict: 'employee_id,date' });
+            .upsert(fallbackPayload1, { onConflict: 'employee_id,date' });
           if (retryRes.error) {
-            console.error('Online DB bulkSaveAttendance error after fallback:', retryRes.error);
-            throw retryRes.error;
+            console.warn('Online DB bulkSaveAttendance error, retrying without site_ids:', retryRes.error.message);
+            const fallbackPayload2 = fallbackPayload1.map(({ site_ids, ...rest }) => rest);
+            retryRes = await client
+              .from('attendance_records')
+              .upsert(fallbackPayload2, { onConflict: 'employee_id,date' });
+            if (retryRes.error) {
+              console.error('Online DB bulkSaveAttendance error after fallbacks:', retryRes.error);
+              throw retryRes.error;
+            }
           }
         }
       }

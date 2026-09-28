@@ -27,6 +27,8 @@ export interface AttendanceRecord {
   site_ids?: string[]; // Multiple site selection support
   site_name?: string; // hydrated helper
   ot_hours: number;
+  ot_site_id?: string | null;
+  ot_site_ids?: string[]; // Multiple OT site selection support
   late_hours: number;
   late_minutes: number;
   labour_count?: number; // For subcontractors: number of labours working that day
@@ -65,6 +67,42 @@ export function getRecordSiteIds(record?: Partial<AttendanceRecord> | null): str
   }
   if (record.site_id) {
     return [record.site_id];
+  }
+  return [];
+}
+
+export function getRecordOtSiteIds(record?: Partial<AttendanceRecord> | null): string[] {
+  if (!record) return [];
+  if (record.ot_site_ids) {
+    if (Array.isArray(record.ot_site_ids)) {
+      return record.ot_site_ids.filter((id): id is string => Boolean(id && typeof id === 'string'));
+    }
+    if (typeof record.ot_site_ids === 'string') {
+      const str = (record.ot_site_ids as string).trim();
+      if (str.startsWith('[') && str.endsWith(']')) {
+        try {
+          const parsed = JSON.parse(str);
+          if (Array.isArray(parsed)) {
+            return parsed.filter((id): id is string => Boolean(id && typeof id === 'string'));
+          }
+        } catch {
+          // fallback
+        }
+      }
+      if (str.startsWith('{') && str.endsWith('}')) {
+        return str
+          .slice(1, -1)
+          .split(',')
+          .map((s) => s.trim().replace(/^"|"$/g, ''))
+          .filter(Boolean);
+      }
+      if (str.length > 0) {
+        return [str];
+      }
+    }
+  }
+  if (record.ot_site_id) {
+    return [record.ot_site_id];
   }
   return [];
 }
