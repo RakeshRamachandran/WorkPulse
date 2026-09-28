@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import type { Employee, Site, AttendanceRecord } from '../types';
-import { getRecordSiteIds, isSubcontractor } from '../types';
-import { Search, Filter, Calendar, Info } from 'lucide-react';
+import { getRecordSiteIds, getRecordOtSiteIds, isSubcontractor } from '../types';
+import { Search, Filter, Calendar, Info, FileText, Download, FileDown } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface AttendanceMatrixViewProps {
   selectedYear: number;
@@ -72,6 +74,276 @@ export const AttendanceMatrixView: React.FC<AttendanceMatrixViewProps> = ({
       return matchesSearch && matchesCategory;
     })
     .sort((a, b) => a.name.localeCompare(b.name));
+
+  // Helper to load logo image for PDF
+  const loadLogoImage = (): Promise<HTMLImageElement | null> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'Anonymous';
+      img.src = '/logo.png';
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null);
+    });
+  };
+
+  // Individual Employee Monthly Work History PDF Export
+  const handleExportEmployeePDF = async (emp: Employee) => {
+    const doc = new jsPDF('portrait', 'mm', 'a4');
+    const logoImg = await loadLogoImage();
+
+    // Top Header Banner (32mm height)
+    doc.setFillColor(22, 163, 74);
+    doc.rect(0, 0, 210, 32, 'F');
+
+    let titleStartX = 14;
+
+    // Add Logo Card preserving natural aspect ratio if loaded
+    if (logoImg) {
+      const imgWidth = logoImg.width || 1024;
+      const imgHeight = logoImg.height || 239;
+      const aspect = imgWidth / imgHeight;
+
+      let drawHeight = 16;
+      let drawWidth = drawHeight * aspect;
+      if (drawWidth > 72) {
+        drawWidth = 72;
+        drawHeight = drawWidth / aspect;
+      }
+
+      const cardWidth = drawWidth + 4;
+      const cardHeight = 22;
+      const cardY = 5;
+      const imgY = cardY + (cardHeight - drawHeight) / 2;
+
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(10, cardY, cardWidth, cardHeight, 2, 2, 'F');
+      doc.addImage(logoImg, 'PNG', 12, imgY, drawWidth, drawHeight);
+
+      titleStartX = 10 + cardWidth + 4;
+    }
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Venkateswara Electricals', titleStartX, 11);
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Employee Attendance & Work History Report - ${monthName}`, titleStartX, 18);
+
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 196, 11, { align: 'right' });
+
+    // Calculate Summary Stats for this Employee
+    let empWorkDays = 0;
+    let empLeaveDays = 0;
+    let empHolidays = 0;
+    let empTotalOt = 0;
+    let empTotalLateMins = 0;
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const rec = recordLookup.get(`${emp.id}_${day}`) || recordLookup.get(`${emp.emp_id}_${day}`);
+      const dObj = new Date(selectedYear, selectedMonth - 1, day);
+      const isSunday = dObj.getDay() === 0;
+      const rawStatus = rec?.status;
+      const status = (rawStatus && rawStatus.trim() !== '') ? rawStatus : (isSunday ? 'HOLIDAY' : undefined);
+
+      if (status === 'PRESENT') empWorkDays += 1;
+      else if (status === 'HALF_DAY') { empWorkDays += 0.5; empLeaveDays += 0.5; }
+      else if (status === 'LEAVE') empLeaveDays += 1;
+      else if (status === 'HOLIDAY') empHolidays += 1;
+
+      if (rec?.ot_hours) empTotalOt += Number(rec.ot_hours) || 0;
+      if (rec?.late_minutes) empTotalLateMins += Number(rec.late_minutes) || 0;
+    }
+
+    // Employee Meta & Summary Info Card
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(229, 231, 235);
+    doc.roundedRect(10, 35, 190, 22, 2, 2, 'FD');
+
+    doc.setFontSize(9.5);
+    doc.setTextColor(17, 24, 39);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Employee: ${emp.name} (${emp.emp_id})`, 14, 41);
+
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(71, 85, 105);
+    doc.text(`Designation: ${emp.designation || 'Worker'}    |    Category: ${emp.category || 'Worker'}`, 14, 47);
+    doc.text(`Period: ${monthName} (${daysInMonth} Total Days)`, 14, 52);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(22, 163, 74);
+    doc.text(`Work Days: ${empWorkDays}d`, 128, 41);
+
+    doc.setTextColor(239, 68, 68);
+    doc.text(`Leaves: ${empLeaveDays}d`, 164, 41);
+
+    doc.setTextColor(245, 158, 11);
+    doc.text(`OT Hours: +${empTotalOt}h`, 128, 48);
+
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Late Time: ${Math.floor(empTotalLateMins / 60)}h ${empTotalLateMins % 60}m`, 164, 48);
+
+    // Build Daily Table Rows for this employee
+    const tableRows = [];
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dObj = new Date(selectedYear, selectedMonth - 1, day);
+      const dayOfWeek = dayNames[dObj.getDay()];
+      const isSunday = dObj.getDay() === 0;
+      const formattedDate = `${String(day).padStart(2, '0')}/${String(selectedMonth).padStart(2, '0')}/${selectedYear} (${dayOfWeek})`;
+
+      const rec = recordLookup.get(`${emp.id}_${day}`) || recordLookup.get(`${emp.emp_id}_${day}`);
+      const rawStatus = rec?.status;
+      const status = (rawStatus && rawStatus.trim() !== '') ? rawStatus : (isSunday ? 'HOLIDAY' : 'NOT LOGGED');
+
+      // Regular Worked Sites
+      const regSiteIds = getRecordSiteIds(rec);
+      const regSiteStr = regSiteIds.length > 0
+        ? regSiteIds.map((id) => {
+            const s = siteMap.get(id);
+            return s ? (s.code || s.name) : 'Site';
+          }).join(', ')
+        : '-';
+
+      // OT Hours
+      const otHrs = rec?.ot_hours ? `+${rec.ot_hours}h` : '-';
+
+      // OT Sites
+      const otSiteIds = getRecordOtSiteIds(rec);
+      const otSiteStr = otSiteIds.length > 0
+        ? otSiteIds.map((id) => {
+            const s = siteMap.get(id);
+            return s ? (s.code || s.name) : 'Site';
+          }).join(', ')
+        : '-';
+
+      // Late Time
+      const lateMins = rec?.late_minutes || 0;
+      const lateStr = lateMins > 0 ? `${Math.floor(lateMins / 60)}h ${lateMins % 60}m` : '-';
+
+      // Formatted Status Label
+      let statusLabel = status;
+      if (status === 'PRESENT') statusLabel = 'PRESENT (P)';
+      else if (status === 'HALF_DAY') statusLabel = 'HALF DAY (HD)';
+      else if (status === 'LEAVE') statusLabel = 'LEAVE (L)';
+      else if (status === 'HOLIDAY') statusLabel = 'HOLIDAY (H)';
+      else if (status === 'NOT LOGGED') statusLabel = '-';
+
+      tableRows.push([
+        formattedDate,
+        statusLabel,
+        regSiteStr,
+        otHrs,
+        otSiteStr,
+        lateStr,
+      ]);
+    }
+
+    autoTable(doc, {
+      startY: 61,
+      margin: { left: 10, right: 10 },
+      head: [
+        ['Date', 'Status', 'Worked Site(s)', 'OT Hours', 'OT Site(s)', 'Late Time'],
+      ],
+      body: tableRows,
+      theme: 'grid',
+      headStyles: {
+        fillColor: [22, 163, 74],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 8.5,
+        halign: 'center',
+        valign: 'middle',
+      },
+      styles: {
+        fontSize: 8,
+        cellPadding: 2,
+        textColor: [17, 24, 39],
+        valign: 'middle',
+      },
+      columnStyles: {
+        0: { halign: 'center', cellWidth: 30 },
+        1: { halign: 'center', fontStyle: 'bold', cellWidth: 30 },
+        2: { cellWidth: 45 },
+        3: { halign: 'center', fontStyle: 'bold', cellWidth: 22 },
+        4: { cellWidth: 41 },
+        5: { halign: 'center', cellWidth: 22 },
+      },
+      didParseCell: (data) => {
+        if (data.section === 'body' && data.column.index === 1) {
+          const val = String(data.cell.raw);
+          if (val.includes('PRESENT')) {
+            data.cell.styles.textColor = [22, 163, 74];
+          } else if (val.includes('HALF DAY')) {
+            data.cell.styles.textColor = [245, 158, 11];
+          } else if (val.includes('LEAVE')) {
+            data.cell.styles.textColor = [239, 68, 68];
+          } else if (val.includes('HOLIDAY')) {
+            data.cell.styles.textColor = [147, 51, 234];
+          } else {
+            data.cell.styles.textColor = [156, 163, 175];
+          }
+        }
+      },
+    });
+
+    // Compact Site Code Reference placed right below the data table
+    const lastY = (doc as any).lastAutoTable?.finalY || 200;
+    const pageHeight = doc.internal.pageSize.height;
+    const activeSites = sites.filter((s) => s.is_active !== false);
+
+    const numCols = 3;
+    const colWidth = 62;
+    const numRows = Math.ceil(activeSites.length / numCols);
+    const legendHeight = 6 + numRows * 3.8;
+
+    let curY = lastY + 4;
+    // Add page if legend exceeds page bottom margin
+    if (curY + legendHeight > pageHeight - 10) {
+      doc.addPage();
+      curY = 12;
+    }
+
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(22, 163, 74);
+    doc.text('Site Code Details:', 10, curY);
+    curY += 4;
+
+    doc.setFontSize(7.5);
+    doc.setTextColor(51, 65, 85);
+
+    const startLegendY = curY;
+    activeSites.forEach((s, idx) => {
+      const col = idx % numCols;
+      const row = Math.floor(idx / numCols);
+      const itemX = 10 + col * colWidth;
+      const itemY = startLegendY + row * 3.8;
+
+      const codeStr = `${s.code || s.id}: `;
+      doc.setFont('helvetica', 'bold');
+      doc.text(codeStr, itemX, itemY);
+      const codeWidth = doc.getTextWidth(codeStr);
+
+      doc.setFont('helvetica', 'normal');
+      let nameText = s.name;
+      const maxNameWidth = colWidth - codeWidth - 2;
+      if (doc.getTextWidth(nameText) > maxNameWidth) {
+        while (nameText.length > 3 && doc.getTextWidth(nameText + '...') > maxNameWidth) {
+          nameText = nameText.slice(0, -1);
+        }
+        nameText += '...';
+      }
+      doc.text(nameText, itemX + codeWidth, itemY);
+    });
+
+    doc.save(`${emp.emp_id}_${emp.name.replace(/\s+/g, '_')}_Attendance_${selectedMonth}_${selectedYear}.pdf`);
+  };
 
   return (
     <div className="space-y-[24px]">
@@ -158,7 +430,7 @@ export const AttendanceMatrixView: React.FC<AttendanceMatrixViewProps> = ({
                 <th className="p-3 border-r border-[#E5E7EB] w-12 min-w-[48px] max-w-[48px] sticky left-0 bg-[#FAFAFA] z-40 font-semibold text-center text-[13px] uppercase">
                   #
                 </th>
-                <th className="p-3 border-r-2 border-[#E5E7EB] w-52 min-w-[208px] max-w-[208px] sticky left-[48px] bg-[#FAFAFA] z-40 font-semibold text-[13px] uppercase tracking-wider">
+                <th className="p-3 border-r-2 border-[#E5E7EB] w-56 min-w-[224px] max-w-[224px] sticky left-[48px] bg-[#FAFAFA] z-40 font-semibold text-[13px] uppercase tracking-wider">
                   Employee Name
                 </th>
                 {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((d) => (
@@ -178,12 +450,22 @@ export const AttendanceMatrixView: React.FC<AttendanceMatrixViewProps> = ({
                     {idx + 1}
                   </td>
 
-                  <td className="p-2.5 border-r-2 border-[#E5E7EB] font-semibold text-[#111827] sticky left-[48px] bg-white z-20 w-52 min-w-[208px] max-w-[208px] truncate">
-                    <div className="flex flex-col">
-                      <span className="truncate text-[#111827] font-semibold">{emp.name}</span>
-                      <span className="text-[12px] text-[#16A34A] font-medium">
-                        {emp.emp_id}
-                      </span>
+                  <td className="p-2.5 border-r-2 border-[#E5E7EB] font-semibold text-[#111827] sticky left-[48px] bg-white z-20 w-56 min-w-[224px] max-w-[224px]">
+                    <div className="flex items-center justify-between space-x-2">
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <span className="truncate text-[#111827] font-semibold">{emp.name}</span>
+                        <span className="text-[12px] text-[#16A34A] font-medium">
+                          {emp.emp_id}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleExportEmployeePDF(emp)}
+                        className="p-1.5 rounded-lg bg-emerald-50 hover:bg-[#16A34A] text-[#16A34A] hover:text-white border border-emerald-200/80 transition-all duration-200 cursor-pointer shrink-0 shadow-2xs group flex items-center justify-center active:scale-95"
+                        title={`Download monthly attendance PDF report for ${emp.name}`}
+                      >
+                        <FileDown className="w-4 h-4 transition-transform group-hover:scale-110" />
+                      </button>
                     </div>
                   </td>
 

@@ -193,31 +193,51 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
     const doc = new jsPDF('portrait', 'mm', 'a4');
     const logoImg = await loadLogoImage();
 
-    // Top Header Banner
+    // Top Header Banner (34mm height)
     doc.setFillColor(22, 163, 74);
     doc.rect(0, 0, 210, 34, 'F');
 
-    // Add Logo Card if loaded
+    let titleStartX = 14;
+
+    // Add Logo Card preserving natural aspect ratio if loaded
     if (logoImg) {
+      const imgWidth = logoImg.width || 1024;
+      const imgHeight = logoImg.height || 239;
+      const aspect = imgWidth / imgHeight;
+
+      let drawHeight = 17;
+      let drawWidth = drawHeight * aspect;
+      if (drawWidth > 74) {
+        drawWidth = 74;
+        drawHeight = drawWidth / aspect;
+      }
+
+      const cardWidth = drawWidth + 4;
+      const cardHeight = 24;
+      const cardY = 5;
+      const imgY = cardY + (cardHeight - drawHeight) / 2;
+
       doc.setFillColor(255, 255, 255);
-      doc.roundedRect(10, 5, 48, 24, 2, 2, 'F');
-      doc.addImage(logoImg, 'PNG', 12, 7, 44, 20);
+      doc.roundedRect(10, cardY, cardWidth, cardHeight, 2, 2, 'F');
+      doc.addImage(logoImg, 'PNG', 12, imgY, drawWidth, drawHeight);
+
+      titleStartX = 10 + cardWidth + 4;
     }
 
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(14);
+    doc.setFontSize(13);
     doc.setFont('helvetica', 'bold');
-    doc.text('Venkateswara Electricals', logoImg ? 64 : 14, 12);
+    doc.text('Venkateswara Electricals', titleStartX, 12);
 
-    doc.setFontSize(9.5);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
-    doc.text(`Monthly Attendance Report - ${monthName}`, logoImg ? 64 : 14, 19);
+    doc.text(`Monthly Attendance Report - ${monthName}`, titleStartX, 19);
 
-    doc.setFontSize(8.5);
+    doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
     doc.text(
       `Total Working Days: ${netWorkingDays}    |    Total Holidays: ${totalHolidaysInMonth}`,
-      logoImg ? 64 : 14,
+      titleStartX,
       26
     );
 
