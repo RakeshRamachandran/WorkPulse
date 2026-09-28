@@ -15,6 +15,8 @@ import {
   Menu,
   X,
   RefreshCw,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -33,6 +35,8 @@ interface HeaderProps {
   currentUser?: AppUser;
   isMobileMenuOpen: boolean;
   setIsMobileMenuOpen: (open: boolean) => void;
+  isCollapsed?: boolean;
+  setIsCollapsed?: (collapsed: boolean | ((prev: boolean) => boolean)) => void;
 }
 
 export const Sidebar: React.FC<{
@@ -40,146 +44,177 @@ export const Sidebar: React.FC<{
   setActiveTab: (tab: ActiveTab) => void;
   isMobileMenuOpen: boolean;
   setIsMobileMenuOpen: (open: boolean) => void;
-}> = ({ activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpen }) => {
-  const handleNavClick = (tab: ActiveTab) => {
-    setActiveTab(tab);
-    setIsMobileMenuOpen(false);
-  };
+  isCollapsed?: boolean;
+  setIsCollapsed?: (collapsed: boolean | ((prev: boolean) => boolean)) => void;
+}> = ({
+  activeTab,
+  setActiveTab,
+  isMobileMenuOpen,
+  setIsMobileMenuOpen,
+  isCollapsed = false,
+  setIsCollapsed,
+}) => {
+    const handleNavClick = (tab: ActiveTab) => {
+      setActiveTab(tab);
+      setIsMobileMenuOpen(false);
+    };
 
-  const navContent = (
-    <div className="flex flex-col justify-between h-full">
-      <div>
-        {/* Brand Logo Header */}
-        <div className="h-16 px-5 border-b border-slate-100 flex items-center justify-between">
-          <img
-            src="/logo.png"
-            alt="Venkateswara Electricals"
-            className="h-9 w-auto object-contain max-w-[180px]"
-          />
-          <button
-            onClick={() => setIsMobileMenuOpen(false)}
-            className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    const navContent = (
+      <div className="flex flex-col justify-between h-full">
+        <div>
+          {/* Brand Logo Header */}
+          <div className={`h-16 border-b border-slate-100 flex items-center justify-between ${isCollapsed ? 'px-3 justify-center' : 'px-5'}`}>
+            {!isCollapsed ? (
+              <img
+                src="/logo.png"
+                alt="Venkateswara Electricals"
+                className="h-10 w-auto object-contain max-w-[190px]"
+              />
+            ) : (
+              <img
+                src="/favicon.png"
+                alt="Venkateswara Electricals"
+                className="w-8 h-8 object-contain shrink-0"
+                title="Venkateswara Electricals"
+              />
+            )}
 
-        {/* Navigation Menu */}
-        <nav className="p-3.5 space-y-1.5 mt-2">
-          {/* Dashboard */}
-          <button
-            onClick={() => handleNavClick('dashboard')}
-            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 cursor-pointer ${activeTab === 'dashboard'
-                ? 'bg-emerald-50 text-[#16a34a] font-bold border-r-4 border-[#16a34a] shadow-xs'
-                : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-semibold'
-              }`}
-          >
-            <LayoutDashboard className={`w-4 h-4 shrink-0 ${activeTab === 'dashboard' ? 'text-[#16a34a]' : 'text-slate-400'}`} />
-            <span>Dashboard</span>
-          </button>
-
-          <hr className="border-t border-slate-100 my-2 mx-1" />
-
-          {/* Attendance Operations */}
-          <button
-            onClick={() => handleNavClick('daily')}
-            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 cursor-pointer ${activeTab === 'daily'
-                ? 'bg-emerald-50 text-[#16a34a] font-bold border-r-4 border-[#16a34a] shadow-xs'
-                : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-semibold'
-              }`}
-          >
-            <Calendar className={`w-4 h-4 shrink-0 ${activeTab === 'daily' ? 'text-[#16a34a]' : 'text-slate-400'}`} />
-            <span>Daily Attendance</span>
-          </button>
-
-          <button
-            onClick={() => handleNavClick('summary')}
-            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 cursor-pointer ${activeTab === 'summary'
-                ? 'bg-emerald-50 text-[#16a34a] font-bold border-r-4 border-[#16a34a] shadow-xs'
-                : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-semibold'
-              }`}
-          >
-            <FileSpreadsheet className={`w-4 h-4 shrink-0 ${activeTab === 'summary' ? 'text-[#16a34a]' : 'text-slate-400'}`} />
-            <span>Monthly Summary</span>
-          </button>
-
-          <button
-            onClick={() => handleNavClick('matrix')}
-            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 cursor-pointer ${activeTab === 'matrix'
-                ? 'bg-emerald-50 text-[#16a34a] font-bold border-r-4 border-[#16a34a] shadow-xs'
-                : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-semibold'
-              }`}
-          >
-            <Grid className={`w-4 h-4 shrink-0 ${activeTab === 'matrix' ? 'text-[#16a34a]' : 'text-slate-400'}`} />
-            <span>Attendance Matrix</span>
-          </button>
-
-          <hr className="border-t border-slate-100 my-2 mx-1" />
-
-          {/* Master Management */}
-          <button
-            onClick={() => handleNavClick('sites')}
-            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 cursor-pointer ${activeTab === 'sites'
-                ? 'bg-emerald-50 text-[#16a34a] font-bold border-r-4 border-[#16a34a] shadow-xs'
-                : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-semibold'
-              }`}
-          >
-            <Building className={`w-4 h-4 shrink-0 ${activeTab === 'sites' ? 'text-[#16a34a]' : 'text-slate-400'}`} />
-            <span>Site Locations</span>
-          </button>
-
-          <button
-            onClick={() => handleNavClick('masters')}
-            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 cursor-pointer ${activeTab === 'masters'
-                ? 'bg-emerald-50 text-[#16a34a] font-bold border-r-4 border-[#16a34a] shadow-xs'
-                : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-semibold'
-              }`}
-          >
-            <Users className={`w-4 h-4 shrink-0 ${activeTab === 'masters' ? 'text-[#16a34a]' : 'text-slate-400'}`} />
-            <span>Employee Roster</span>
-          </button>
-        </nav>
-      </div>
-
-      {/* Footer Branding - Powered by Axon9 */}
-      <div className="p-3.5 border-t border-slate-100 bg-slate-50/60 text-center">
-        <div className="flex flex-col items-center justify-center space-y-0.5">
-          <div className="flex items-center justify-center space-x-1.5 text-xs text-slate-500 font-medium">
-            <span>Powered by</span>
-            <span className="font-bold text-[#16a34a]">Axon9</span>
+            {/* Mobile Close Button */}
+            <button
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+              title="Close side panel"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
-          <p className="text-[10px] text-slate-400 font-medium italic tracking-wide">
-            Minds wired to make things
-          </p>
+
+          {/* Navigation Menu */}
+          <nav className={`p-2.5 space-y-1.5 mt-2 ${isCollapsed ? 'px-2' : 'px-3.5'}`}>
+            {/* Dashboard */}
+            <button
+              onClick={() => handleNavClick('dashboard')}
+              title="Dashboard"
+              className={`w-full flex items-center ${isCollapsed ? 'justify-center px-2 py-3' : 'space-x-3 px-3.5 py-2.5'} rounded-xl text-xs transition-all duration-200 cursor-pointer ${activeTab === 'dashboard'
+                ? 'bg-emerald-50 text-[#16a34a] font-bold border-r-4 border-[#16a34a] shadow-xs'
+                : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-semibold'
+                }`}
+            >
+              <LayoutDashboard className={`w-5 h-5 shrink-0 ${activeTab === 'dashboard' ? 'text-[#16a34a]' : 'text-slate-400'}`} />
+              {!isCollapsed && <span>Dashboard</span>}
+            </button>
+
+            <hr className="border-t border-slate-100 my-2 mx-1" />
+
+            {/* Attendance Operations */}
+            <button
+              onClick={() => handleNavClick('daily')}
+              title="Daily Attendance"
+              className={`w-full flex items-center ${isCollapsed ? 'justify-center px-2 py-3' : 'space-x-3 px-3.5 py-2.5'} rounded-xl text-xs transition-all duration-200 cursor-pointer ${activeTab === 'daily'
+                ? 'bg-emerald-50 text-[#16a34a] font-bold border-r-4 border-[#16a34a] shadow-xs'
+                : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-semibold'
+                }`}
+            >
+              <Calendar className={`w-5 h-5 shrink-0 ${activeTab === 'daily' ? 'text-[#16a34a]' : 'text-slate-400'}`} />
+              {!isCollapsed && <span>Daily Attendance</span>}
+            </button>
+
+            <button
+              onClick={() => handleNavClick('summary')}
+              title="Monthly Summary"
+              className={`w-full flex items-center ${isCollapsed ? 'justify-center px-2 py-3' : 'space-x-3 px-3.5 py-2.5'} rounded-xl text-xs transition-all duration-200 cursor-pointer ${activeTab === 'summary'
+                ? 'bg-emerald-50 text-[#16a34a] font-bold border-r-4 border-[#16a34a] shadow-xs'
+                : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-semibold'
+                }`}
+            >
+              <FileSpreadsheet className={`w-5 h-5 shrink-0 ${activeTab === 'summary' ? 'text-[#16a34a]' : 'text-slate-400'}`} />
+              {!isCollapsed && <span>Monthly Summary</span>}
+            </button>
+
+            <button
+              onClick={() => handleNavClick('matrix')}
+              title="Attendance Matrix"
+              className={`w-full flex items-center ${isCollapsed ? 'justify-center px-2 py-3' : 'space-x-3 px-3.5 py-2.5'} rounded-xl text-xs transition-all duration-200 cursor-pointer ${activeTab === 'matrix'
+                ? 'bg-emerald-50 text-[#16a34a] font-bold border-r-4 border-[#16a34a] shadow-xs'
+                : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-semibold'
+                }`}
+            >
+              <Grid className={`w-5 h-5 shrink-0 ${activeTab === 'matrix' ? 'text-[#16a34a]' : 'text-slate-400'}`} />
+              {!isCollapsed && <span>Attendance Matrix</span>}
+            </button>
+
+            <hr className="border-t border-slate-100 my-2 mx-1" />
+
+            {/* Master Management */}
+            <button
+              onClick={() => handleNavClick('sites')}
+              title="Site Locations"
+              className={`w-full flex items-center ${isCollapsed ? 'justify-center px-2 py-3' : 'space-x-3 px-3.5 py-2.5'} rounded-xl text-xs transition-all duration-200 cursor-pointer ${activeTab === 'sites'
+                ? 'bg-emerald-50 text-[#16a34a] font-bold border-r-4 border-[#16a34a] shadow-xs'
+                : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-semibold'
+                }`}
+            >
+              <Building className={`w-5 h-5 shrink-0 ${activeTab === 'sites' ? 'text-[#16a34a]' : 'text-slate-400'}`} />
+              {!isCollapsed && <span>Site Locations</span>}
+            </button>
+
+            <button
+              onClick={() => handleNavClick('masters')}
+              title="Employee Roster"
+              className={`w-full flex items-center ${isCollapsed ? 'justify-center px-2 py-3' : 'space-x-3 px-3.5 py-2.5'} rounded-xl text-xs transition-all duration-200 cursor-pointer ${activeTab === 'masters'
+                ? 'bg-emerald-50 text-[#16a34a] font-bold border-r-4 border-[#16a34a] shadow-xs'
+                : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-semibold'
+                }`}
+            >
+              <Users className={`w-5 h-5 shrink-0 ${activeTab === 'masters' ? 'text-[#16a34a]' : 'text-slate-400'}`} />
+              {!isCollapsed && <span>Employee Roster</span>}
+            </button>
+          </nav>
+        </div>
+
+        {/* Footer Branding */}
+        <div className={`p-3 border-t border-slate-100 bg-slate-50/60 text-center ${isCollapsed ? 'px-1' : 'px-3.5'}`}>
+          {!isCollapsed ? (
+            <div className="flex flex-col items-center justify-center space-y-0.5">
+              <div className="flex items-center justify-center space-x-1.5 text-xs text-slate-500 font-medium">
+                <span>Powered by</span>
+                <span className="font-bold text-[#16a34a]">Axon9</span>
+              </div>
+              <p className="text-[10px] text-slate-400 font-medium italic tracking-wide">
+                Minds wired to make things
+              </p>
+            </div>
+          ) : (
+            <span className="text-[11px] font-extrabold text-[#16a34a]" title="Powered by Axon9">A9</span>
+          )}
         </div>
       </div>
-    </div>
-  );
+    );
 
-  return (
-    <>
-      {/* Desktop Sidebar (lg screens) */}
-      <aside className="hidden lg:flex w-64 bg-white border-r border-slate-200 flex-col justify-between h-screen sticky top-0 z-30 shadow-xs select-none shrink-0">
-        {navContent}
-      </aside>
+    return (
+      <>
+        {/* Desktop Sidebar (lg screens) */}
+        <aside className={`hidden lg:flex ${isCollapsed ? 'w-[68px]' : 'w-64'} bg-white border-r border-slate-200 flex-col justify-between h-screen sticky top-0 z-30 shadow-xs select-none shrink-0 transition-all duration-300 ease-in-out`}>
+          {navContent}
+        </aside>
 
-      {/* Mobile Drawer (screens < lg) */}
-      {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          {/* Backdrop Overlay */}
-          <div
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity"
-            onClick={() => setIsMobileMenuOpen(false)}
-          />
-          {/* Drawer Content */}
-          <aside className="fixed inset-y-0 left-0 w-72 bg-white z-50 shadow-2xl flex flex-col justify-between animate-in slide-in-from-left duration-200">
-            {navContent}
-          </aside>
-        </div>
-      )}
-    </>
-  );
-};
+        {/* Mobile Drawer (screens < lg) */}
+        {isMobileMenuOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden">
+            {/* Backdrop Overlay */}
+            <div
+              className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity"
+              onClick={() => setIsMobileMenuOpen(false)}
+            />
+            {/* Drawer Content */}
+            <aside className="fixed inset-y-0 left-0 w-72 bg-white z-50 shadow-2xl flex flex-col justify-between animate-in slide-in-from-left duration-200">
+              {navContent}
+            </aside>
+          </div>
+        )}
+      </>
+    );
+  };
 
 export const Header: React.FC<HeaderProps> = ({
   activeTab,
@@ -194,6 +229,8 @@ export const Header: React.FC<HeaderProps> = ({
   isRefreshing = false,
   isMobileMenuOpen,
   setIsMobileMenuOpen,
+  isCollapsed = false,
+  setIsCollapsed,
 }) => {
   const months = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -247,6 +284,18 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Menu className="w-5 h-5" />
           </button>
+
+          {/* Desktop Toggle Icon Button */}
+          {setIsCollapsed && (
+            <button
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="hidden lg:flex p-2 rounded-xl text-slate-500 hover:text-[#16a34a] hover:bg-emerald-50 border border-slate-200 transition cursor-pointer shrink-0"
+              title={isCollapsed ? "Expand side panel" : "Collapse side panel"}
+            >
+              {isCollapsed ? <PanelLeftOpen className="w-5 h-5 text-[#16a34a]" /> : <PanelLeftClose className="w-5 h-5" />}
+            </button>
+          )}
+
           <div>
             <h1 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
               {currentInfo.title}
@@ -308,8 +357,8 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={onRefreshData}
             disabled={isRefreshing}
             className={`flex items-center space-x-1.5 text-[11px] sm:text-xs font-bold px-2.5 py-1.5 rounded-xl border transition-all shadow-xs cursor-pointer ${isRefreshing
-                ? 'bg-emerald-50 text-[#16a34a] border-emerald-300'
-                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-emerald-50 hover:text-[#16a34a] hover:border-emerald-200'
+              ? 'bg-emerald-50 text-[#16a34a] border-emerald-300'
+              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-emerald-50 hover:text-[#16a34a] hover:border-emerald-200'
               } disabled:opacity-60`}
             title="Sync & refresh latest data from database"
           >
@@ -322,8 +371,8 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           onClick={onOpenSupabaseModal}
           className={`flex items-center space-x-1.5 text-[11px] sm:text-xs font-bold px-2.5 py-1.5 rounded-xl border transition-all shadow-xs cursor-pointer ${supabaseConfig.isConnected
-              ? 'bg-emerald-50 text-[#16a34a] border-emerald-200 hover:bg-emerald-100'
-              : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+            ? 'bg-emerald-50 text-[#16a34a] border-emerald-200 hover:bg-emerald-100'
+            : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
             }`}
           title="Click to view database connection status"
         >

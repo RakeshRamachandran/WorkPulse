@@ -57,6 +57,9 @@ export default function App() {
   const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState<boolean>(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
 
+  // Sidebar collapse state: collapsed by default on first load
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(true);
+
   // Unsaved Changes Protection State
   const [hasUnsavedAttendance, setHasUnsavedAttendance] = useState<boolean>(false);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
@@ -207,6 +210,8 @@ export default function App() {
         setActiveTab={handleTabChange}
         isMobileMenuOpen={isMobileMenuOpen}
         setIsMobileMenuOpen={setIsMobileMenuOpen}
+        isCollapsed={isSidebarCollapsed}
+        setIsCollapsed={setIsSidebarCollapsed}
       />
 
       {/* Main Content Area */}
@@ -232,10 +237,12 @@ export default function App() {
           currentUser={currentUser}
           isMobileMenuOpen={isMobileMenuOpen}
           setIsMobileMenuOpen={setIsMobileMenuOpen}
+          isCollapsed={isSidebarCollapsed}
+          setIsCollapsed={setIsSidebarCollapsed}
         />
 
         {/* Dynamic View Body */}
-        <main className="flex-1 p-3 sm:p-6 max-w-[1600px] w-full mx-auto">
+        <main className="flex-1 p-3 sm:p-6 max-w-[1920px] w-full mx-auto">
           {loading ? (
             <div className="flex items-center justify-center py-24 space-x-3 text-[#6B7280]">
               <div className="w-6 h-6 border-2 border-[#16A34A] border-t-transparent rounded-full animate-spin" />

@@ -40,12 +40,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       <div className="w-full max-w-[440px] space-y-6">
         {/* Top Logo & Product Title */}
         <div className="text-center space-y-3">
-          {/* Venkateswara Logo Emblem */}
+          {/* Venkateswara Main Logo Emblem */}
           <div className="inline-flex items-center justify-center">
             <img 
-              src="/favicon.png" 
-              alt="Venkateswara Logo" 
-              className="w-12 h-12 object-contain rounded-full shadow-xs"
+              src="/logo.png" 
+              alt="Venkateswara Electricals Logo" 
+              className="h-14 w-auto object-contain max-w-[260px]"
             />
           </div>
 

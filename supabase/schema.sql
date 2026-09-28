@@ -34,8 +34,6 @@ CREATE TABLE IF NOT EXISTS public.attendance_records (
     site_id UUID REFERENCES public.sites(id) ON DELETE SET NULL,
     site_ids TEXT[] DEFAULT '{}',
     ot_hours NUMERIC(4, 2) NOT NULL DEFAULT 0.0,
-    ot_site_id UUID REFERENCES public.sites(id) ON DELETE SET NULL,
-    ot_site_ids TEXT[] DEFAULT '{}',
     late_hours INT NOT NULL DEFAULT 0,
     late_minutes INT NOT NULL DEFAULT 0,
     labour_count INT NOT NULL DEFAULT 0,
@@ -48,8 +46,6 @@ CREATE TABLE IF NOT EXISTS public.attendance_records (
 -- MIGRATION STATEMENTS: ADD MISSING COLUMNS IF TABLES ALREADY EXIST ONLINE
 ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS site_ids TEXT[] DEFAULT '{}';
 ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS ot_hours NUMERIC(4, 2) NOT NULL DEFAULT 0.0;
-ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS ot_site_id UUID REFERENCES public.sites(id) ON DELETE SET NULL;
-ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS ot_site_ids TEXT[] DEFAULT '{}';
 ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS late_hours INT NOT NULL DEFAULT 0;
 ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS late_minutes INT NOT NULL DEFAULT 0;
 ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS labour_count INT NOT NULL DEFAULT 0;
@@ -68,7 +64,6 @@ CREATE TABLE IF NOT EXISTS public.users (
 CREATE INDEX IF NOT EXISTS idx_attendance_date ON public.attendance_records(date);
 CREATE INDEX IF NOT EXISTS idx_attendance_employee ON public.attendance_records(employee_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_site ON public.attendance_records(site_id);
-CREATE INDEX IF NOT EXISTS idx_attendance_ot_site ON public.attendance_records(ot_site_id);
 CREATE INDEX IF NOT EXISTS idx_users_username ON public.users(username);
 
 -- ENABLE ROW LEVEL SECURITY (RLS)

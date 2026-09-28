@@ -57,6 +57,8 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
       let otHours = 0;
       let totalLateMinutes = 0;
       const siteDays: Record<string, number> = {};
+      const otSiteHours: Record<string, number> = {};
+      const otSiteDays: Record<string, number> = {};
 
       empRecords.forEach((r) => {
         if (r.status === 'PRESENT') {
@@ -80,13 +82,16 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
           });
         }
 
-        if (Number(r.ot_hours) > 0) {
+        const recordOtHours = Number(r.ot_hours) || 0;
+        if (recordOtHours > 0) {
           const otSIds = getRecordOtSiteIds(r);
-          otSIds.forEach((sId) => {
-            if (!siteDays[sId]) {
-              siteDays[sId] = (siteDays[sId] || 0) + 1;
-            }
-          });
+          if (otSIds.length > 0) {
+            const splitHours = recordOtHours / otSIds.length;
+            otSIds.forEach((sId) => {
+              otSiteHours[sId] = (otSiteHours[sId] || 0) + splitHours;
+              otSiteDays[sId] = (otSiteDays[sId] || 0) + 1;
+            });
+          }
         }
       });
 
@@ -118,6 +123,8 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
         totalLateMinutes,
         lateFormatted,
         siteDays,
+        otSiteHours,
+        otSiteDays,
       };
     });
 
@@ -229,6 +236,16 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
               })
               .join(', ');
 
+      const otSiteAllocations =
+        !s.otSiteHours || Object.keys(s.otSiteHours).length === 0
+          ? '-'
+          : Object.entries(s.otSiteHours)
+              .map(([siteId, hrs]) => {
+                const sObj = siteMap.get(siteId);
+                return `${sObj ? (sObj.code || sObj.name) : 'Site'}: +${hrs}h`;
+              })
+              .join(', ');
+
       return [
         (index + 1).toString(),
         s.employee.name,
@@ -237,6 +254,7 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
         s.otHours.toString(),
         s.lateFormatted,
         siteAllocations,
+        otSiteAllocations,
       ];
     });
 
@@ -244,7 +262,7 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
       startY: 38,
       margin: { left: 10, right: 10 },
       head: [
-        ['Sl No', 'Employee', 'Work Days', 'Leave Days', 'OT Hours', 'Late Time', 'Site Allocation'],
+        ['SL No', 'Employee Name', 'Work Days', 'Leave Days', 'OT Hours', 'Late Time', 'Assigned Sites', 'OT Sites'],
       ],
       body: tableData,
       theme: 'grid',
@@ -252,24 +270,25 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
         fillColor: [22, 163, 74],
         textColor: [255, 255, 255],
         fontStyle: 'bold',
-        fontSize: 8.5,
+        fontSize: 8,
         halign: 'center',
         valign: 'middle',
       },
       styles: {
         fontSize: 8,
-        cellPadding: 2.5,
+        cellPadding: 2,
         textColor: [0, 0, 0],
         valign: 'middle',
       },
       columnStyles: {
-        0: { halign: 'center', valign: 'middle', cellWidth: 10 },
-        1: { fontStyle: 'bold', valign: 'middle', cellWidth: 46 },
-        2: { halign: 'center', fontStyle: 'bold', valign: 'middle', cellWidth: 20 },
-        3: { halign: 'center', fontStyle: 'bold', valign: 'middle', cellWidth: 20 },
-        4: { halign: 'center', fontStyle: 'bold', valign: 'middle', cellWidth: 20 },
-        5: { halign: 'center', fontStyle: 'bold', valign: 'middle', cellWidth: 22 },
-        6: { valign: 'middle', cellWidth: 52 },
+        0: { halign: 'center', valign: 'middle', cellWidth: 12 },
+        1: { fontStyle: 'bold', valign: 'middle', cellWidth: 38 },
+        2: { halign: 'center', fontStyle: 'bold', valign: 'middle', cellWidth: 15 },
+        3: { halign: 'center', fontStyle: 'bold', valign: 'middle', cellWidth: 15 },
+        4: { halign: 'center', fontStyle: 'bold', valign: 'middle', cellWidth: 15 },
+        5: { halign: 'center', fontStyle: 'bold', valign: 'middle', cellWidth: 17 },
+        6: { valign: 'middle', cellWidth: 39 },
+        7: { valign: 'middle', cellWidth: 39 },
       },
     });
 
@@ -331,11 +350,21 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
     const excelRows = filteredSummaries.map((s) => {
       const siteAllocations =
         Object.keys(s.siteDays).length === 0
-          ? 'No site logged'
+          ? '-'
           : Object.entries(s.siteDays)
               .map(([siteId, count]) => {
                 const sObj = siteMap.get(siteId);
                 return `${sObj ? (sObj.code || sObj.name) : 'Site'}: ${count}d`;
+              })
+              .join(', ');
+
+      const otSiteAllocations =
+        !s.otSiteHours || Object.keys(s.otSiteHours).length === 0
+          ? '-'
+          : Object.entries(s.otSiteHours)
+              .map(([siteId, hrs]) => {
+                const sObj = siteMap.get(siteId);
+                return `${sObj ? (sObj.code || sObj.name) : 'Site'}: +${hrs}h`;
               })
               .join(', ');
 
@@ -348,7 +377,8 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
         'Leave Days': s.leaveDays,
         'OT Hours': s.otHours,
         'Late Time': s.lateFormatted,
-        'Site Allocation': siteAllocations,
+        'Assigned Sites': siteAllocations,
+        'OT Sites': otSiteAllocations,
       };
     });
 
@@ -361,7 +391,8 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
       'Leave Days': totalLeaveDaysAll,
       'OT Hours': totalOTHoursAll,
       'Late Time': `${Math.floor(totalLateMinsAll / 60)}h ${totalLateMinsAll % 60}m`,
-      'Site Allocation': '',
+      'Assigned Sites': '',
+      'OT Sites': '',
     });
 
     const worksheet = XLSX.utils.json_to_sheet(excelRows);
@@ -489,7 +520,8 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
                   <th className="py-3 px-5 text-center align-middle">Leave Days</th>
                   <th className="py-3 px-5 text-center align-middle">OT Hours</th>
                   <th className="py-3 px-5 text-center align-middle">Late Time</th>
-                  <th className="py-3 px-5 text-center align-middle">Primary Site Allocation</th>
+                  <th className="py-3 px-5 text-center align-middle">Assigned Sites</th>
+                  <th className="py-3 px-5 text-center align-middle">OT Sites</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E5E7EB] text-[14px] text-[#111827]">
@@ -543,16 +575,39 @@ export const MonthlySummaryReport: React.FC<MonthlySummaryReportProps> = ({
                     <td className="py-2.5 px-5 align-middle">
                       <div className="flex flex-wrap gap-1.5">
                         {Object.keys(sum.siteDays).length === 0 ? (
-                          <span className="bg-slate-100 text-[#6B7280] rounded-full px-2.5 py-0.5 text-[11px] font-medium">No site logged</span>
+                          <span className="text-[#6B7280] font-normal text-xs">-</span>
                         ) : (
                           Object.entries(sum.siteDays).map(([siteId, count]) => {
                             const sObj = siteMap.get(siteId);
                             return (
                               <span
-                                key={siteId}
+                                key={`reg-${siteId}`}
                                 className="bg-[#E8F7EE] text-[#16A34A] rounded-full px-2.5 py-0.5 text-[11px] font-medium"
+                                title={`${sObj ? sObj.name : 'Site'}: ${count} regular days`}
                               >
-                                {sObj ? sObj.code : 'Site'}: {count}d
+                                {sObj ? (sObj.code || sObj.name) : 'Site'}: {count}d
+                              </span>
+                            );
+                          })
+                        )}
+                      </div>
+                    </td>
+
+                    {/* OT Site Chips */}
+                    <td className="py-2.5 px-5 align-middle">
+                      <div className="flex flex-wrap gap-1.5">
+                        {!sum.otSiteHours || Object.keys(sum.otSiteHours).length === 0 ? (
+                          <span className="text-[#6B7280] font-normal text-xs">-</span>
+                        ) : (
+                          Object.entries(sum.otSiteHours).map(([siteId, hrs]) => {
+                            const sObj = siteMap.get(siteId);
+                            return (
+                              <span
+                                key={`ot-${siteId}`}
+                                className="bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2.5 py-0.5 text-[11px] font-medium"
+                                title={`OT at ${sObj ? sObj.name : 'Site'}: +${hrs} hours`}
+                              >
+                                {sObj ? (sObj.code || sObj.name) : 'Site'}: +{hrs}h
                               </span>
                             );
                           })

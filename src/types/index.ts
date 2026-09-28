@@ -151,6 +151,8 @@ export interface MonthlyEmployeeSummary {
   totalLateMinutes: number;
   lateFormatted: string;
   siteDays: Record<string, number>; // site_id -> count of days worked
+  otSiteHours?: Record<string, number>; // site_id -> total OT hours worked
+  otSiteDays?: Record<string, number>; // site_id -> count of OT days worked
 }
 
 export interface SupabaseConfig {

@@ -146,25 +146,26 @@ export const MultiSiteSelect: React.FC<MultiSiteSelectProps> = ({
 
   return (
     <div className={`relative ${className}`} ref={containerRef}>
-      {/* Trigger Button / Display Box */}
+      {/* Trigger Button / Display Box (Strict 34px Fixed Height) */}
       <div
         onClick={handleToggle}
-        className={`min-h-[40px] w-full bg-[#F8FAFC] border border-[#E5E7EB] rounded-[10px] px-3 py-1.5 flex items-center justify-between gap-2 cursor-pointer transition-all duration-150 ${isOpen ? 'ring-2 ring-[#16A34A] bg-white border-[#16A34A]' : 'hover:bg-white hover:border-gray-300'
+        title={selectedSites.length > 0 ? selectedSites.map((s) => s.code || s.name).join(', ') : placeholder}
+        className={`h-[34px] min-h-[34px] max-h-[34px] w-full bg-[#F8FAFC] border border-[#E5E7EB] rounded-[8px] px-2 flex items-center justify-between gap-1 cursor-pointer transition-all duration-150 overflow-hidden ${isOpen ? 'ring-2 ring-[#16A34A] bg-white border-[#16A34A]' : 'hover:bg-white hover:border-gray-300'
           } ${disabled ? 'opacity-50 cursor-not-allowed bg-gray-100' : ''}`}
       >
-        <div className="flex items-center space-x-2 flex-1 flex-wrap gap-1.5 overflow-hidden">
-          <Building className="w-4 h-4 text-[#6B7280] shrink-0" />
+        <div className="flex items-center space-x-1 flex-1 min-w-0 overflow-hidden flex-nowrap">
+          <Building className="w-3.5 h-3.5 text-[#6B7280] shrink-0" />
 
           {selectedSites.length === 0 ? (
-            <span className="text-[13px] text-[#6B7280] font-normal italic">{placeholder}</span>
-          ) : (
-            <div className="flex flex-wrap gap-1 max-w-full items-center">
+            <span className="text-[12px] text-[#6B7280] font-normal italic truncate">{placeholder}</span>
+          ) : selectedSites.length <= 2 ? (
+            <div className="flex items-center gap-1 min-w-0 overflow-hidden flex-nowrap">
               {selectedSites.map((site) => (
                 <span
                   key={site.id}
-                  className="inline-flex items-center space-x-1 bg-[#E8F7EE] text-[#16A34A] border border-[#16A34A]/30 px-2 py-0.5 rounded-full text-[12px] font-medium leading-tight shadow-2xs"
+                  className="inline-flex items-center space-x-1 bg-[#E8F7EE] text-[#16A34A] border border-[#16A34A]/30 px-1.5 py-0.5 rounded-full text-[11px] font-medium leading-none shrink-0"
                 >
-                  <span className="truncate max-w-[120px]">{site.code || site.name}</span>
+                  <span className="truncate max-w-[65px]">{site.code || site.name}</span>
                   {!disabled && (
                     <button
                       type="button"
@@ -172,22 +173,44 @@ export const MultiSiteSelect: React.FC<MultiSiteSelectProps> = ({
                       className="hover:bg-[#16A34A]/20 p-0.5 rounded-full text-[#16A34A] transition shrink-0"
                       title="Remove site"
                     >
-                      <X className="w-3 h-3" />
+                      <X className="w-2.5 h-2.5" />
                     </button>
                   )}
                 </span>
               ))}
             </div>
+          ) : (
+            <div className="flex items-center gap-1 min-w-0 overflow-hidden flex-nowrap">
+              <span
+                key={selectedSites[0].id}
+                className="inline-flex items-center space-x-1 bg-[#E8F7EE] text-[#16A34A] border border-[#16A34A]/30 px-1.5 py-0.5 rounded-full text-[11px] font-medium leading-none shrink-0"
+              >
+                <span className="truncate max-w-[60px]">{selectedSites[0].code || selectedSites[0].name}</span>
+                {!disabled && (
+                  <button
+                    type="button"
+                    onClick={(e) => toggleSite(selectedSites[0].id, e)}
+                    className="hover:bg-[#16A34A]/20 p-0.5 rounded-full text-[#16A34A] transition shrink-0"
+                    title="Remove site"
+                  >
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                )}
+              </span>
+              <span className="inline-flex items-center bg-[#16A34A] text-white px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none shrink-0 shadow-2xs">
+                +{selectedSites.length - 1} more
+              </span>
+            </div>
           )}
         </div>
 
-        <div className="flex items-center space-x-1 shrink-0">
+        <div className="flex items-center space-x-0.5 shrink-0 ml-0.5">
           {selectedSiteIds.length > 0 && !disabled && (
-            <span className="text-[11px] font-bold bg-[#16A34A] text-white px-1.5 py-0.5 rounded-full mr-1">
+            <span className="text-[10px] font-bold bg-[#16A34A] text-white px-1.5 py-0.5 rounded-full">
               {selectedSiteIds.length}
             </span>
           )}
-          <ChevronDown className={`w-4 h-4 text-[#6B7280] transition-transform duration-200 ${isOpen ? 'rotate-180 text-[#16A34A]' : ''}`} />
+          <ChevronDown className={`w-3.5 h-3.5 text-[#6B7280] transition-transform duration-200 ${isOpen ? 'rotate-180 text-[#16A34A]' : ''}`} />
         </div>
       </div>
 

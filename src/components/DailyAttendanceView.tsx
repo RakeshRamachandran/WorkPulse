@@ -117,14 +117,14 @@ export const StatusSelect: React.FC<StatusSelectProps> = ({ value, onChange }) =
       <button
         type="button"
         onClick={handleToggle}
-        className={`h-[38px] px-3.5 rounded-[10px] border flex items-center justify-center space-x-1.5 font-bold text-[14px] shadow-xs cursor-pointer transition-all ${activeItem
+        className={`h-[34px] px-2.5 rounded-[8px] border flex items-center justify-center space-x-1 font-bold text-[13px] shadow-xs cursor-pointer transition-all ${activeItem
           ? activeItem.color
           : 'bg-[#F8FAFC] text-[#6B7280] border-[#E5E7EB] hover:bg-slate-100'
           }`}
         title={activeItem ? activeItem.label : 'Select Status'}
       >
         <span>{activeItem ? activeItem.code : '--'}</span>
-        <ChevronDown className={`w-3.5 h-3.5 opacity-80 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-3 h-3 opacity-80 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {isOpen &&
@@ -234,7 +234,7 @@ const OTInput: React.FC<OTInputProps> = ({ value, onChange, disabled }) => {
       onChange={handleChange}
       onBlur={handleBlur}
       onFocus={(e) => e.target.select()}
-      className={`w-20 h-[40px] border text-center font-semibold text-[14px] rounded-[10px] focus:outline-none focus:ring-2 focus:bg-white transition ${value > 0
+      className={`w-14 h-[34px] border text-center font-bold text-[13px] rounded-[8px] focus:outline-none focus:ring-2 focus:bg-white transition ${value > 0
         ? 'bg-emerald-50 border-emerald-300 text-emerald-700 focus:ring-emerald-400'
         : 'bg-[#F8FAFC] border-[#E5E7EB] text-[#111827] focus:ring-[#16A34A]'
         }`}
@@ -297,7 +297,7 @@ const LabourCountInput: React.FC<LabourCountInputProps> = ({ value, onChange, di
       onChange={handleChange}
       onBlur={handleBlur}
       onFocus={(e) => e.target.select()}
-      className={`w-20 h-[40px] border text-center font-semibold text-[14px] rounded-[10px] focus:outline-none focus:ring-2 focus:bg-white transition ${value > 0
+      className={`w-14 h-[34px] border text-center font-bold text-[13px] rounded-[8px] focus:outline-none focus:ring-2 focus:bg-white transition ${value > 0
         ? 'bg-orange-50 border-orange-300 text-orange-700 focus:ring-orange-400'
         : 'bg-[#F8FAFC] border-[#E5E7EB] text-[#111827] focus:ring-[#16A34A]'
         }`}
@@ -854,19 +854,19 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
         <div className="overflow-x-auto min-h-[380px] pb-28">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-[#FAFAFA] text-[13px] uppercase tracking-wider text-[#6B7280] font-semibold border-b border-[#E5E7EB] h-[48px]">
-                <th className="py-3 px-5 w-28">Emp ID</th>
-                <th className="py-3 px-5 min-w-[200px]">{activeSection === 'employees' ? 'Employee Name' : 'Contractor Name'}</th>
-                <th className="py-3 px-5 min-w-[140px]">Designation</th>
-                <th className="py-3 px-5 text-center w-52">Attendance Status</th>
-                <th className="py-3 px-5 min-w-[280px]">Assigned Site Location(s)</th>
+              <tr className="bg-[#FAFAFA] text-[12px] uppercase tracking-wider text-[#6B7280] font-semibold border-b border-[#E5E7EB] h-[42px]">
+                <th className="py-2.5 px-2.5 w-[70px] text-center">EMP ID</th>
+                <th className="py-2.5 px-2.5 min-w-[130px] max-w-[160px]">{activeSection === 'employees' ? 'Employee Name' : 'Contractor Name'}</th>
+                <th className="py-2.5 px-2.5 w-[110px]">Designation</th>
+                <th className="py-2.5 px-1 text-center w-[72px]">Status</th>
+                <th className="py-2.5 px-2.5 min-w-[150px] flex-1">Assigned Sites</th>
                 {activeSection === 'contractors' && (
-                  <th className="py-3 px-5 text-center w-28">Labours</th>
+                  <th className="py-2.5 px-1 text-center w-[60px]">Labours</th>
                 )}
-                <th className="py-3 px-5 text-center w-28">OT Hours</th>
-                <th className="py-3 px-5 min-w-[280px]">OT Site Location(s)</th>
+                <th className="py-2.5 px-1 text-center w-[60px]">OT Hrs</th>
+                <th className="py-2.5 px-2.5 min-w-[150px] flex-1">OT Sites</th>
                 {activeSection === 'employees' && (
-                  <th className="py-3 px-5 text-center min-w-[200px]">Late Arrival (Hrs / Mins)</th>
+                  <th className="py-2.5 px-1 text-center w-[130px]">Late Time</th>
                 )}
               </tr>
             </thead>
@@ -893,8 +893,8 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
                   return (
                     <tr key={emp.id} className="hover:bg-[#F9FBFA] transition-colors duration-150">
                       {/* Emp ID Pill Badge */}
-                      <td className="py-3 px-5">
-                        <span className={`px-3 py-1 rounded-full text-[12px] font-medium inline-block ${activeSection === 'contractors'
+                      <td className="py-2.5 px-2.5 text-center">
+                        <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium inline-block ${activeSection === 'contractors'
                           ? 'bg-orange-50 text-orange-600'
                           : 'bg-[#E8F7EE] text-[#16A34A]'
                           }`}>
@@ -903,17 +903,17 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
                       </td>
 
                       {/* Name */}
-                      <td className="py-3 px-5 font-semibold text-[#111827]">
+                      <td className="py-2.5 px-2.5 font-semibold text-[#111827] text-[13px] truncate max-w-[160px]" title={emp.name}>
                         {emp.name}
                       </td>
 
                       {/* Designation */}
-                      <td className="py-3 px-5 text-[14px] text-[#6B7280]">
+                      <td className="py-2.5 px-2.5 text-[12px] text-[#6B7280] truncate max-w-[120px]" title={emp.designation}>
                         {emp.designation}
                       </td>
 
                       {/* Status Select */}
-                      <td className="py-3 px-5 text-center">
+                      <td className="py-2.5 px-1 text-center">
                         <StatusSelect
                           value={currentStatus}
                           onChange={(newStatus) => handleStatusChange(emp.id, newStatus)}
@@ -921,24 +921,24 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
                       </td>
 
                       {/* Site Multi-Select */}
-                      <td className="py-3 px-5 min-w-[280px]">
+                      <td className="py-2.5 px-2.5 min-w-[150px]">
                         {isLeave ? (
-                          <span className="text-[14px] text-[#6B7280] italic">N/A (L)</span>
+                          <span className="text-[12px] text-[#6B7280] italic">N/A (L)</span>
                         ) : (
                           <MultiSiteSelect
                             sites={sites}
                             selectedSiteIds={currentSiteIds}
                             onChange={(ids) => handleSitesChange(emp.id, ids)}
-                            placeholder="Select Site Location(s)"
+                            placeholder="Select Site"
                           />
                         )}
                       </td>
 
                       {/* Labours — Contractors only */}
                       {activeSection === 'contractors' && (
-                        <td className="py-3 px-5 text-center">
+                        <td className="py-2.5 px-1 text-center">
                           {isLeave ? (
-                            <span className="text-[14px] text-[#6B7280]">-</span>
+                            <span className="text-[12px] text-[#6B7280]">-</span>
                           ) : (
                             <LabourCountInput
                               value={currentLabourCount}
@@ -949,9 +949,9 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
                       )}
 
                       {/* OT Input */}
-                      <td className="py-3 px-5 text-center">
+                      <td className="py-2.5 px-1 text-center">
                         {isLeave ? (
-                          <span className="text-[14px] text-[#6B7280]">-</span>
+                          <span className="text-[12px] text-[#6B7280]">-</span>
                         ) : (
                           <OTInput
                             value={currentOT}
@@ -961,26 +961,26 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
                       </td>
 
                       {/* OT Site Multi-Select */}
-                      <td className="py-3 px-5 min-w-[280px]">
+                      <td className="py-2.5 px-2.5 min-w-[150px]">
                         {isLeave ? (
-                          <span className="text-[14px] text-[#6B7280] italic">N/A (L)</span>
+                          <span className="text-[12px] text-[#6B7280] italic">N/A (L)</span>
                         ) : (
                           <MultiSiteSelect
                             sites={sites}
                             selectedSiteIds={getRecordOtSiteIds(rec)}
                             onChange={(ids) => handleOtSitesChange(emp.id, ids)}
-                            placeholder="Select OT Site Location(s)"
+                            placeholder="Select OT Site"
                           />
                         )}
                       </td>
 
                       {/* Late Arrival (Hours & Minutes Selectors) — Employees only */}
                       {activeSection === 'employees' && (
-                        <td className="py-3 px-5 text-center min-w-[200px]">
+                        <td className="py-2.5 px-1 text-center w-[130px]">
                           {isLeave || isHoliday ? (
-                            <span className="text-[14px] text-[#6B7280]">-</span>
+                            <span className="text-[12px] text-[#6B7280]">-</span>
                           ) : (
-                            <div className="flex items-center space-x-1.5 justify-center min-w-[190px]">
+                            <div className="flex items-center space-x-1 justify-center w-[125px]">
                               {/* Hours Selector */}
                               <div className="relative flex-1">
                                 <select
@@ -990,23 +990,23 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
                                     const mins = currentLateMins % 60;
                                     handleLateTimeChange(emp.id, hrs * 60 + mins);
                                   }}
-                                  className={`w-full h-[40px] text-[13px] font-semibold pl-2.5 pr-6 rounded-[10px] border appearance-none cursor-pointer focus:outline-none transition ${currentLateMins > 0
+                                  className={`w-full h-[34px] text-[12px] font-semibold pl-1.5 pr-5 rounded-[8px] border appearance-none cursor-pointer focus:outline-none transition ${currentLateMins > 0
                                     ? 'bg-rose-50 text-[#EF4444] border-rose-200'
                                     : 'bg-[#F8FAFC] text-[#111827] border-[#E5E7EB]'
                                     }`}
                                   title="Late Hours"
                                 >
-                                  <option value="0">0 hr</option>
-                                  <option value="1">1 hr</option>
-                                  <option value="2">2 hrs</option>
-                                  <option value="3">3 hrs</option>
-                                  <option value="4">4 hrs</option>
-                                  <option value="5">5 hrs</option>
-                                  <option value="6">6 hrs</option>
-                                  <option value="7">7 hrs</option>
-                                  <option value="8">8 hrs</option>
+                                  <option value="0">0h</option>
+                                  <option value="1">1h</option>
+                                  <option value="2">2h</option>
+                                  <option value="3">3h</option>
+                                  <option value="4">4h</option>
+                                  <option value="5">5h</option>
+                                  <option value="6">6h</option>
+                                  <option value="7">7h</option>
+                                  <option value="8">8h</option>
                                 </select>
-                                <ChevronDown className="w-3.5 h-3.5 text-[#6B7280] absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                <ChevronDown className="w-3 h-3 text-[#6B7280] absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none" />
                               </div>
 
                               {/* Minutes Selector */}
@@ -1018,27 +1018,27 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
                                     const mins = parseInt(e.target.value, 10);
                                     handleLateTimeChange(emp.id, hrs * 60 + mins);
                                   }}
-                                  className={`w-full h-[40px] text-[13px] font-semibold pl-2.5 pr-6 rounded-[10px] border appearance-none cursor-pointer focus:outline-none transition ${currentLateMins > 0
+                                  className={`w-full h-[34px] text-[12px] font-semibold pl-1.5 pr-5 rounded-[8px] border appearance-none cursor-pointer focus:outline-none transition ${currentLateMins > 0
                                     ? 'bg-rose-50 text-[#EF4444] border-rose-200'
                                     : 'bg-[#F8FAFC] text-[#111827] border-[#E5E7EB]'
                                     }`}
                                   title="Late Minutes"
                                 >
-                                  <option value="0">0 min</option>
-                                  <option value="5">5 mins</option>
-                                  <option value="10">10 mins</option>
-                                  <option value="15">15 mins</option>
-                                  <option value="20">20 mins</option>
-                                  <option value="25">25 mins</option>
-                                  <option value="30">30 mins</option>
-                                  <option value="35">35 mins</option>
-                                  <option value="40">40 mins</option>
-                                  <option value="45">45 mins</option>
-                                  <option value="50">50 mins</option>
-                                  <option value="55">55 mins</option>
-                                  <option value="60">60 mins</option>
+                                  <option value="0">0m</option>
+                                  <option value="5">5m</option>
+                                  <option value="10">10m</option>
+                                  <option value="15">15m</option>
+                                  <option value="20">20m</option>
+                                  <option value="25">25m</option>
+                                  <option value="30">30m</option>
+                                  <option value="35">35m</option>
+                                  <option value="40">40m</option>
+                                  <option value="45">45m</option>
+                                  <option value="50">50m</option>
+                                  <option value="55">55m</option>
+                                  <option value="60">60m</option>
                                 </select>
-                                <ChevronDown className="w-3.5 h-3.5 text-[#6B7280] absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                <ChevronDown className="w-3 h-3 text-[#6B7280] absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none" />
                               </div>
                             </div>
                           )}
