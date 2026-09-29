@@ -292,55 +292,70 @@ export const AttendanceMatrixView: React.FC<AttendanceMatrixViewProps> = ({
       },
     });
 
-    // Compact Site Code Reference placed right below the data table
-    const lastY = (doc as any).lastAutoTable?.finalY || 200;
-    const pageHeight = doc.internal.pageSize.height;
-    const activeSites = sites.filter((s) => s.is_active !== false);
-
-    const numCols = 3;
-    const colWidth = 62;
-    const numRows = Math.ceil(activeSites.length / numCols);
-    const legendHeight = 6 + numRows * 3.8;
-
-    let curY = lastY + 4;
-    // Add page if legend exceeds page bottom margin
-    if (curY + legendHeight > pageHeight - 10) {
-      doc.addPage();
-      curY = 12;
+    // Collect sites actually present in this employee's records for the month
+    const usedSiteIds = new Set<string>();
+    for (let day = 1; day <= daysInMonth; day++) {
+      const rec = recordLookup.get(`${emp.id}_${day}`) || recordLookup.get(`${emp.emp_id}_${day}`);
+      if (rec) {
+        getRecordSiteIds(rec).forEach((id) => usedSiteIds.add(id));
+        getRecordOtSiteIds(rec).forEach((id) => usedSiteIds.add(id));
+      }
     }
 
-    doc.setFontSize(8.5);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(22, 163, 74);
-    doc.text('Site Code Details:', 10, curY);
-    curY += 4;
+    const reportSites = sites
+      .filter((s) => usedSiteIds.has(s.id) || (s.code && usedSiteIds.has(s.code)) || (s.name && usedSiteIds.has(s.name)))
+      .sort((a, b) => (a.code || a.name).localeCompare(b.code || b.name));
 
-    doc.setFontSize(7.5);
-    doc.setTextColor(51, 65, 85);
+    // Compact Site Code Reference placed right below the data table (only if sites are present in this report)
+    if (reportSites.length > 0) {
+      const lastY = (doc as any).lastAutoTable?.finalY || 200;
+      const pageHeight = doc.internal.pageSize.height;
 
-    const startLegendY = curY;
-    activeSites.forEach((s, idx) => {
-      const col = idx % numCols;
-      const row = Math.floor(idx / numCols);
-      const itemX = 10 + col * colWidth;
-      const itemY = startLegendY + row * 3.8;
+      const numCols = 3;
+      const colWidth = 62;
+      const numRows = Math.ceil(reportSites.length / numCols);
+      const legendHeight = 6 + numRows * 3.8;
 
-      const codeStr = `${s.code || s.id}: `;
-      doc.setFont('helvetica', 'bold');
-      doc.text(codeStr, itemX, itemY);
-      const codeWidth = doc.getTextWidth(codeStr);
-
-      doc.setFont('helvetica', 'normal');
-      let nameText = s.name;
-      const maxNameWidth = colWidth - codeWidth - 2;
-      if (doc.getTextWidth(nameText) > maxNameWidth) {
-        while (nameText.length > 3 && doc.getTextWidth(nameText + '...') > maxNameWidth) {
-          nameText = nameText.slice(0, -1);
-        }
-        nameText += '...';
+      let curY = lastY + 10;
+      // Add page if legend exceeds page bottom margin
+      if (curY + legendHeight > pageHeight - 10) {
+        doc.addPage();
+        curY = 15;
       }
-      doc.text(nameText, itemX + codeWidth, itemY);
-    });
+
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(22, 163, 74);
+      doc.text('Site Code Details:', 10, curY);
+      curY += 4;
+
+      doc.setFontSize(7.5);
+      doc.setTextColor(51, 65, 85);
+
+      const startLegendY = curY;
+      reportSites.forEach((s, idx) => {
+        const col = idx % numCols;
+        const row = Math.floor(idx / numCols);
+        const itemX = 10 + col * colWidth;
+        const itemY = startLegendY + row * 3.8;
+
+        const codeStr = `${s.code || s.id}: `;
+        doc.setFont('helvetica', 'bold');
+        doc.text(codeStr, itemX, itemY);
+        const codeWidth = doc.getTextWidth(codeStr);
+
+        doc.setFont('helvetica', 'normal');
+        let nameText = s.name;
+        const maxNameWidth = colWidth - codeWidth - 2;
+        if (doc.getTextWidth(nameText) > maxNameWidth) {
+          while (nameText.length > 3 && doc.getTextWidth(nameText + '...') > maxNameWidth) {
+            nameText = nameText.slice(0, -1);
+          }
+          nameText += '...';
+        }
+        doc.text(nameText, itemX + codeWidth, itemY);
+      });
+    }
 
     doc.save(`${emp.emp_id}_${emp.name.replace(/\s+/g, '_')}_Attendance_${selectedMonth}_${selectedYear}.pdf`);
   };
