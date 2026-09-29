@@ -91,9 +91,9 @@ export const AttendanceMatrixView: React.FC<AttendanceMatrixViewProps> = ({
     const doc = new jsPDF('portrait', 'mm', 'a4');
     const logoImg = await loadLogoImage();
 
-    // Top Header Banner (32mm height)
+    // Top Header Banner (26mm height)
     doc.setFillColor(22, 163, 74);
-    doc.rect(0, 0, 210, 32, 'F');
+    doc.rect(0, 0, 210, 26, 'F');
 
     let titleStartX = 14;
 
@@ -103,16 +103,16 @@ export const AttendanceMatrixView: React.FC<AttendanceMatrixViewProps> = ({
       const imgHeight = logoImg.height || 239;
       const aspect = imgWidth / imgHeight;
 
-      let drawHeight = 16;
+      let drawHeight = 14;
       let drawWidth = drawHeight * aspect;
-      if (drawWidth > 72) {
-        drawWidth = 72;
+      if (drawWidth > 62) {
+        drawWidth = 62;
         drawHeight = drawWidth / aspect;
       }
 
       const cardWidth = drawWidth + 4;
-      const cardHeight = 22;
-      const cardY = 5;
+      const cardHeight = 18;
+      const cardY = 4;
       const imgY = cardY + (cardHeight - drawHeight) / 2;
 
       doc.setFillColor(255, 255, 255);
@@ -123,17 +123,17 @@ export const AttendanceMatrixView: React.FC<AttendanceMatrixViewProps> = ({
     }
 
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(13);
+    doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text('Venkateswara Electricals', titleStartX, 11);
+    doc.text('Venkateswara Electricals', titleStartX, 10);
 
-    doc.setFontSize(9);
+    doc.setFontSize(8.5);
     doc.setFont('helvetica', 'bold');
-    doc.text(`Employee Attendance & Work History Report - ${monthName}`, titleStartX, 18);
+    doc.text(`Employee Attendance & Work History Report - ${monthName}`, titleStartX, 17.5);
 
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 196, 11, { align: 'right' });
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 196, 10, { align: 'right' });
 
     // Calculate Summary Stats for this Employee
     let empWorkDays = 0;
@@ -158,34 +158,33 @@ export const AttendanceMatrixView: React.FC<AttendanceMatrixViewProps> = ({
       if (rec?.late_minutes) empTotalLateMins += Number(rec.late_minutes) || 0;
     }
 
-    // Employee Meta & Summary Info Card
+    // Employee Meta & Summary Info Card (18mm height: Y=29 to 47)
     doc.setFillColor(248, 250, 252);
     doc.setDrawColor(229, 231, 235);
-    doc.roundedRect(10, 35, 190, 22, 2, 2, 'FD');
+    doc.roundedRect(10, 29, 190, 18, 2, 2, 'FD');
 
     doc.setFontSize(9.5);
     doc.setTextColor(17, 24, 39);
     doc.setFont('helvetica', 'bold');
-    doc.text(`Employee: ${emp.name} (${emp.emp_id})`, 14, 41);
+    doc.text(`Employee: ${emp.name} (${emp.emp_id})`, 14, 35);
 
     doc.setFontSize(8.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(71, 85, 105);
-    doc.text(`Designation: ${emp.designation || 'Worker'}    |    Category: ${emp.category || 'Worker'}`, 14, 47);
-    doc.text(`Period: ${monthName} (${daysInMonth} Total Days)`, 14, 52);
+    doc.text(`Designation: ${emp.designation || 'Worker'}    |    Category: ${emp.category || 'Worker'}    |    Period: ${monthName} (${daysInMonth} Days)`, 14, 42);
 
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(22, 163, 74);
-    doc.text(`Work Days: ${empWorkDays}d`, 128, 41);
+    doc.text(`Work Days: ${empWorkDays}d`, 128, 35);
 
     doc.setTextColor(239, 68, 68);
-    doc.text(`Leaves: ${empLeaveDays}d`, 164, 41);
+    doc.text(`Leaves: ${empLeaveDays}d`, 164, 35);
 
     doc.setTextColor(245, 158, 11);
-    doc.text(`OT Hours: +${empTotalOt}h`, 128, 48);
+    doc.text(`OT Hours: +${empTotalOt}h`, 128, 42);
 
     doc.setTextColor(100, 116, 139);
-    doc.text(`Late Time: ${Math.floor(empTotalLateMins / 60)}h ${empTotalLateMins % 60}m`, 164, 48);
+    doc.text(`Late Time: ${Math.floor(empTotalLateMins / 60)}h ${empTotalLateMins % 60}m`, 164, 42);
 
     // Build Daily Table Rows for this employee
     const tableRows = [];
@@ -205,9 +204,9 @@ export const AttendanceMatrixView: React.FC<AttendanceMatrixViewProps> = ({
       const regSiteIds = getRecordSiteIds(rec);
       const regSiteStr = regSiteIds.length > 0
         ? regSiteIds.map((id) => {
-            const s = siteMap.get(id);
-            return s ? (s.code || s.name) : 'Site';
-          }).join(', ')
+          const s = siteMap.get(id);
+          return s ? (s.code || s.name) : 'Site';
+        }).join(', ')
         : '-';
 
       // OT Hours
@@ -217,9 +216,9 @@ export const AttendanceMatrixView: React.FC<AttendanceMatrixViewProps> = ({
       const otSiteIds = getRecordOtSiteIds(rec);
       const otSiteStr = otSiteIds.length > 0
         ? otSiteIds.map((id) => {
-            const s = siteMap.get(id);
-            return s ? (s.code || s.name) : 'Site';
-          }).join(', ')
+          const s = siteMap.get(id);
+          return s ? (s.code || s.name) : 'Site';
+        }).join(', ')
         : '-';
 
       // Late Time
@@ -244,9 +243,12 @@ export const AttendanceMatrixView: React.FC<AttendanceMatrixViewProps> = ({
       ]);
     }
 
+    // Dynamic padding so 28/30/31 day months all fill the page perfectly without overflowing
+    const paddingVal = daysInMonth >= 31 ? 1.5 : (daysInMonth === 30 ? 1.62 : 1.85);
+
     autoTable(doc, {
-      startY: 61,
-      margin: { left: 10, right: 10 },
+      startY: 50,
+      margin: { left: 10, right: 10, top: 10, bottom: 5 },
       head: [
         ['Date', 'Status', 'Worked Site(s)', 'OT Hours', 'OT Site(s)', 'Late Time'],
       ],
@@ -257,21 +259,22 @@ export const AttendanceMatrixView: React.FC<AttendanceMatrixViewProps> = ({
         textColor: [255, 255, 255],
         fontStyle: 'bold',
         fontSize: 8.5,
+        cellPadding: 1.6,
         halign: 'center',
         valign: 'middle',
       },
       styles: {
         fontSize: 8,
-        cellPadding: 2,
+        cellPadding: paddingVal,
         textColor: [17, 24, 39],
         valign: 'middle',
       },
       columnStyles: {
-        0: { halign: 'center', cellWidth: 30 },
-        1: { halign: 'center', fontStyle: 'bold', cellWidth: 30 },
-        2: { cellWidth: 45 },
-        3: { halign: 'center', fontStyle: 'bold', cellWidth: 22 },
-        4: { cellWidth: 41 },
+        0: { halign: 'center', cellWidth: 28 },
+        1: { halign: 'center', fontStyle: 'bold', cellWidth: 28 },
+        2: { cellWidth: 46 },
+        3: { halign: 'center', fontStyle: 'bold', cellWidth: 20 },
+        4: { cellWidth: 46 },
         5: { halign: 'center', cellWidth: 22 },
       },
       didParseCell: (data) => {
@@ -306,7 +309,7 @@ export const AttendanceMatrixView: React.FC<AttendanceMatrixViewProps> = ({
       .filter((s) => usedSiteIds.has(s.id) || (s.code && usedSiteIds.has(s.code)) || (s.name && usedSiteIds.has(s.name)))
       .sort((a, b) => (a.code || a.name).localeCompare(b.code || b.name));
 
-    // Compact Site Code Reference placed right below the data table (only if sites are present in this report)
+    // Site Code Reference placed right below the data table on the same page (with a 1-line gap)
     if (reportSites.length > 0) {
       const lastY = (doc as any).lastAutoTable?.finalY || 200;
       const pageHeight = doc.internal.pageSize.height;
@@ -314,13 +317,12 @@ export const AttendanceMatrixView: React.FC<AttendanceMatrixViewProps> = ({
       const numCols = 3;
       const colWidth = 62;
       const numRows = Math.ceil(reportSites.length / numCols);
-      const legendHeight = 6 + numRows * 3.8;
+      const legendHeight = 5 + numRows * 3.8;
 
-      let curY = lastY + 10;
-      // Add page if legend exceeds page bottom margin
-      if (curY + legendHeight > pageHeight - 10) {
-        doc.addPage();
-        curY = 15;
+      let curY = lastY + 7; // Clean 1-line spacing gap after table
+      // Guarantee single page fit: only adjust if legend exceeds bottom margin
+      if (curY + legendHeight > pageHeight - 5) {
+        curY = pageHeight - legendHeight - 2;
       }
 
       doc.setFontSize(8.5);
