@@ -50,6 +50,8 @@ ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS late_hours INT NO
 ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS late_minutes INT NOT NULL DEFAULT 0;
 ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS labour_count INT NOT NULL DEFAULT 0;
 ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS remarks TEXT;
+ALTER TABLE public.attendance_records DROP CONSTRAINT IF EXISTS chk_ot_hours;
+ALTER TABLE public.attendance_records ADD CONSTRAINT chk_ot_hours CHECK (ot_hours >= 0 AND ot_hours <= 24);
 
 -- 4. USERS TABLE
 CREATE TABLE IF NOT EXISTS public.users (

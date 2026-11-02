@@ -187,6 +187,7 @@ interface OTInputProps {
 
 const OTInput: React.FC<OTInputProps> = ({ value, onChange, disabled }) => {
   const [text, setText] = useState<string>(value === 0 ? '' : String(value));
+  const [isExceeded, setIsExceeded] = useState(false);
 
   useEffect(() => {
     setText(value === 0 ? '' : String(value));
@@ -195,26 +196,38 @@ const OTInput: React.FC<OTInputProps> = ({ value, onChange, disabled }) => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value;
     if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
-      setText(raw);
       if (raw === '' || raw === '.') {
+        setText(raw);
+        setIsExceeded(false);
         onChange(0);
-      } else {
-        const num = parseFloat(raw);
-        if (!isNaN(num)) {
-          onChange(Math.min(16, Math.max(0, num)));
+        return;
+      }
+      const num = parseFloat(raw);
+      if (!isNaN(num)) {
+        if (num > 24) {
+          // Cap at maximum 24 hours
+          setText('24');
+          setIsExceeded(true);
+          onChange(24);
+          setTimeout(() => setIsExceeded(false), 1500);
+          return;
         }
+        setIsExceeded(false);
+        setText(raw);
+        onChange(Math.max(0, num));
       }
     }
   };
 
   const handleBlur = () => {
+    setIsExceeded(false);
     if (text === '' || text === '.') {
       setText('');
       onChange(0);
     } else {
       const num = parseFloat(text);
       if (!isNaN(num)) {
-        const clamped = Math.min(16, Math.max(0, num));
+        const clamped = Math.min(24, Math.max(0, num));
         setText(clamped === 0 ? '' : String(clamped));
         onChange(clamped);
       } else {
@@ -234,9 +247,12 @@ const OTInput: React.FC<OTInputProps> = ({ value, onChange, disabled }) => {
       onChange={handleChange}
       onBlur={handleBlur}
       onFocus={(e) => e.target.select()}
-      className={`w-14 h-[34px] border text-center font-bold text-[13px] rounded-[8px] focus:outline-none focus:ring-2 focus:bg-white transition ${value > 0
-        ? 'bg-emerald-50 border-emerald-300 text-emerald-700 focus:ring-emerald-400'
-        : 'bg-[#F8FAFC] border-[#E5E7EB] text-[#111827] focus:ring-[#16A34A]'
+      title={isExceeded ? 'Maximum OT allowed is 24 hours' : 'Overtime hours (0 to 24 hours max)'}
+      className={`w-14 h-[34px] border text-center font-bold text-[13px] rounded-[8px] focus:outline-none transition ${isExceeded
+        ? 'bg-amber-50 border-amber-400 text-amber-700 ring-2 ring-amber-400'
+        : value > 0
+          ? 'bg-emerald-50 border-emerald-300 text-emerald-700 focus:ring-emerald-400 focus:bg-white'
+          : 'bg-[#F8FAFC] border-[#E5E7EB] text-[#111827] focus:ring-[#16A34A] focus:bg-white'
         }`}
     />
   );
@@ -455,9 +471,10 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
   const handleOTChange = (empId: string, otHours: number) => {
     const current = draftRecords[empId] || {};
     const newStatus = (!current.status || current.status.trim() === '') ? 'PRESENT' : current.status;
+    const validatedOT = Math.min(24, Math.max(0, Number(otHours) || 0));
     updateLocalRecord(empId, {
       status: newStatus as AttendanceStatus,
-      ot_hours: otHours,
+      ot_hours: validatedOT,
     });
   };
 
@@ -555,7 +572,12 @@ export const DailyAttendanceView: React.FC<DailyAttendanceViewProps> = ({
   const handleSaveAll = async () => {
     setIsSaving(true);
     try {
-      const recordsToSave = Object.values(draftRecords).filter(r => r.status && r.status.trim() !== '');
+      const recordsToSave = Object.values(draftRecords)
+        .filter(r => r.status && r.status.trim() !== '')
+        .map(r => ({
+          ...r,
+          ot_hours: Math.min(24, Math.max(0, Number(r.ot_hours) || 0)),
+        }));
       if (recordsToSave.length === 0) {
         alert('Please select attendance status for at least one employee before saving.');
         setIsSaving(false);
